@@ -36,29 +36,6 @@ export default function Dashboard() {
     }
   }, [botData?.web_log, webAutoScroll]);
 
-  // Manuel scroll handler'ları ekleyelim
-  const handleMblScroll = (e) => {
-    if (!mblAutoScroll) return;
-    
-    const element = e.target;
-    const isScrolledToBottom = Math.abs((element.scrollHeight - element.scrollTop) - element.clientHeight) < 1;
-    
-    if (!isScrolledToBottom) {
-      setMblAutoScroll(false);
-    }
-  };
-
-  const handleWebScroll = (e) => {
-    if (!webAutoScroll) return;
-    
-    const element = e.target;
-    const isScrolledToBottom = Math.abs((element.scrollHeight - element.scrollTop) - element.clientHeight) < 1;
-    
-    if (!isScrolledToBottom) {
-      setWebAutoScroll(false);
-    }
-  };
-
   const getTurkeyTime = () => {
     const date = new Date();
     const options = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
@@ -386,7 +363,6 @@ export default function Dashboard() {
         <Grid item xs={12} md={6} sx={{ height: '100%' }}>
           <Box
             ref={mblLogRef}
-            onScroll={handleMblScroll}
             sx={{
               width: '100%',
               height: '100%',
@@ -433,7 +409,6 @@ export default function Dashboard() {
         <Grid item xs={12} md={6} sx={{ height: '100%' }}>
           <Box
             ref={webLogRef}
-            onScroll={handleWebScroll}
             sx={{
               width: '100%',
               height: '100%',
