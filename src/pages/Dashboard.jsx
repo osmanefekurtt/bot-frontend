@@ -5,7 +5,8 @@ import { useWebSocket } from '../hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from '../config.jsx';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useRef } from 'react'; 
-
+import LockOpenIcon from '@mui/icons-material/LockOpen';
+import LockIcon from '@mui/icons-material/Lock';
 
 export default function Dashboard() {
   const theme = useTheme();
@@ -15,20 +16,48 @@ export default function Dashboard() {
   const [mblFontSize, setMblFontSize] = useState('10px');
   const [webFontSize, setWebFontSize] = useState('10px');
 
+  const [mblAutoScroll, setMblAutoScroll] = useState(true);
+  const [webAutoScroll, setWebAutoScroll] = useState(true);
+
   const mblLogRef = useRef(null);
   const webLogRef = useRef(null);
 
+  // Mobil log için scroll effect
   useEffect(() => {
-    if (mblLogRef.current) {
+    if (mblAutoScroll && mblLogRef.current) {
       mblLogRef.current.scrollTop = mblLogRef.current.scrollHeight;
     }
-  }, [botData?.mbl_log]);
+  }, [botData?.mbl_log, mblAutoScroll]);
 
+  // Web log için scroll effect
   useEffect(() => {
-    if (webLogRef.current) {
+    if (webAutoScroll && webLogRef.current) {
       webLogRef.current.scrollTop = webLogRef.current.scrollHeight;
     }
-  }, [botData?.web_log]);
+  }, [botData?.web_log, webAutoScroll]);
+
+  // Manuel scroll handler'ları ekleyelim
+  const handleMblScroll = (e) => {
+    if (!mblAutoScroll) return;
+    
+    const element = e.target;
+    const isScrolledToBottom = Math.abs((element.scrollHeight - element.scrollTop) - element.clientHeight) < 1;
+    
+    if (!isScrolledToBottom) {
+      setMblAutoScroll(false);
+    }
+  };
+
+  const handleWebScroll = (e) => {
+    if (!webAutoScroll) return;
+    
+    const element = e.target;
+    const isScrolledToBottom = Math.abs((element.scrollHeight - element.scrollTop) - element.clientHeight) < 1;
+    
+    if (!isScrolledToBottom) {
+      setWebAutoScroll(false);
+    }
+  };
 
   const getTurkeyTime = () => {
     const date = new Date();
@@ -156,6 +185,7 @@ export default function Dashboard() {
         color: theme.palette.mode === 'dark' ? '#e0e0e0' : '#333',
       }}
     >
+      {/* Status Box */}
       <Box
         sx={{
           width: '100%',
@@ -218,15 +248,15 @@ export default function Dashboard() {
           <div>Kullanıcı: {botData?.username || 'N/A'}</div>
           <div 
             onClick={() => {
-              if (botData?.lissans_key) {  // user objesi içinden lissans_key'i kontrol et
+              if (botData?.lissans_key) {
                 copyToClipboard(botData.lissans_key);
               }
             }}
             style={{ 
               cursor: 'pointer',
-              userSelect: 'none',  // metni seçilemez yap
-              display: 'flex',     // flex kullan
-              alignItems: 'center' // dikey hizalama
+              userSelect: 'none',
+              display: 'flex',
+              alignItems: 'center'
             }}
           >
             <span>Lisans:&nbsp;</span>
@@ -251,7 +281,9 @@ export default function Dashboard() {
         </Box>
       </Box>
 
+      {/* Controls Box */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0, alignItems: 'center' }}>
+        {/* Mobile Controls */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Button
             onClick={() => downloadLog('mbl_log')}
@@ -274,6 +306,17 @@ export default function Dashboard() {
           >
             <DeleteIcon sx={{ fontSize: 15 }} />
           </Button>
+          <Button
+            onClick={() => setMblAutoScroll(!mblAutoScroll)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              color: !mblAutoScroll ? 'success.main' : 'warning.main',
+            }}
+          >
+            {!mblAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
+          </Button>
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <Select
               value={mblFontSize}
@@ -288,6 +331,7 @@ export default function Dashboard() {
           </FormControl>
         </Box>
 
+        {/* Web Controls */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControl size="small" sx={{ minWidth: 120, mr: 2 }}>
             <Select
@@ -322,13 +366,27 @@ export default function Dashboard() {
           >
             <DeleteIcon sx={{ fontSize: 15 }} />
           </Button>
+          <Button
+            onClick={() => setWebAutoScroll(!webAutoScroll)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              color: !webAutoScroll ? 'success.main' : 'warning.main',
+            }}
+          >
+            {!webAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
+          </Button>
         </Box>
       </Box>
 
+      {/* Logs Grid */}
       <Grid container spacing={2} sx={{ height: 'calc(85vh - 150px)' }}>
+        {/* Mobile Log */}
         <Grid item xs={12} md={6} sx={{ height: '100%' }}>
           <Box
             ref={mblLogRef}
+            onScroll={handleMblScroll}
             sx={{
               width: '100%',
               height: '100%',
@@ -354,7 +412,7 @@ export default function Dashboard() {
             }}
           >
             <div style={{ marginBottom: '8px' }}>Mobil Bot Çıktıları</div>
-            <Box sx={{ flex: 1, overflowY: 'auto' }}>
+            <Box sx={{ flex: 1 }}>
               {botData?.mbl_log?.length > 0 &&
                 botData.mbl_log.map((log, index) => (
                   <div
@@ -371,9 +429,11 @@ export default function Dashboard() {
           </Box>
         </Grid>
 
+        {/* Web Log */}
         <Grid item xs={12} md={6} sx={{ height: '100%' }}>
           <Box
             ref={webLogRef}
+            onScroll={handleWebScroll}
             sx={{
               width: '100%',
               height: '100%',
@@ -399,7 +459,7 @@ export default function Dashboard() {
             }}
           >
             <div style={{ marginBottom: '8px' }}>Web Bot Çıktıları</div>
-            <Box sx={{ flex: 1, overflowY: 'auto' }}>
+            <Box sx={{ flex: 1 }}>
               {botData?.web_log?.length > 0 &&
                 botData.web_log.map((log, index) => (
                   <div
@@ -417,6 +477,7 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
+      {/* Copy Success Message */}
       {copiedText && (
         <Box sx={{
           position: 'fixed',
