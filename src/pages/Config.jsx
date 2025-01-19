@@ -276,7 +276,6 @@ export default function Config() {
             variant={mode === 'otomatik' ? 'contained' : 'outlined'}
             onClick={() => setMode('otomatik')}
             sx={{ fontSize: '0.7rem' }}
-            disabled
           >
             Otomatik
           </Button>

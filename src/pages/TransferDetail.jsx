@@ -9,8 +9,10 @@ import {
   Select,
   MenuItem,
   Grid,
-  Divider
+  Divider,
+  Button
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useWebSocket } from '../hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from '../config.jsx';
 
@@ -39,10 +41,9 @@ export default function TransferDetail() {
       if (latestMessage.action === 'get_transfer_data' && !latestMessage.isError) {
         setTransferData(latestMessage.result.transfers);
         
-        // Eğer seçili hesap varsa, o hesabın güncel loglarını güncelle
         if (selectedAccount) {
           const selectedTransfer = latestMessage.result.transfers.find(
-            (transfer) => transfer.src_account.username === selectedAccount
+            (transfer) => transfer.trg_account.username === selectedAccount
           );
           if (selectedTransfer) {
             setMblLog(selectedTransfer.mbl_log);
@@ -68,7 +69,7 @@ export default function TransferDetail() {
 
   const handleAccountSelect = (e) => {
     setSelectedAccount(e.target.value);
-    const selectedTransfer = transferData.find((transfer) => transfer.src_account.username === e.target.value);
+    const selectedTransfer = transferData.find((transfer) => transfer.trg_account.username === e.target.value);
     if (selectedTransfer) {
       setMblLog(selectedTransfer.mbl_log);
       setWebLog(selectedTransfer.web_log);
@@ -77,6 +78,19 @@ export default function TransferDetail() {
       setMblLog([]);
       setWebLog([]);
       setIsTransferActive(false);
+    }
+  };
+
+  const handleClearTransfers = () => {
+    if (window.confirm('Transfer geçmişini silmek istediğinize emin misiniz?')) {
+      if (sendMessage) {
+        sendMessage({ action: 'delete_transfer_data' });
+        setTransferData([]);
+        setSelectedAccount('');
+        setMblLog([]);
+        setWebLog([]);
+        setIsTransferActive(false);
+      }
     }
   };
 
@@ -97,32 +111,44 @@ export default function TransferDetail() {
           width: '80%'
         }}
       >
-        <FormControl fullWidth size="small">
-          <InputLabel id="account-select-label" sx={{ color: theme.palette.mode === 'dark' ? '#fff' : '#000' }}>
-            Hesap
-          </InputLabel>
-          <Select
-            labelId="account-select-label"
-            id="account-select"
-            value={selectedAccount}
-            label="Hesap"
-            onChange={handleAccountSelect}
-            sx={{ 
-              height: 40,
-              width: '100%',
-              color: theme.palette.mode === 'dark' ? '#fff' : '#000',
-              backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#555',
-              marginBottom: 2,
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <FormControl sx={{ width: '95%' }} size="small">
+            <InputLabel id="account-select-label" sx={{ color: theme.palette.mode === 'dark' ? '#fff' : '#000' }}>
+              Hesap
+            </InputLabel>
+            <Select
+              labelId="account-select-label"
+              id="account-select"
+              value={selectedAccount}
+              label="Hesap"
+              onChange={handleAccountSelect}
+              sx={{ 
+                height: 40,
+                color: theme.palette.mode === 'dark' ? '#fff' : '#000',
+                backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#555',
+              }}
+            >
+              <MenuItem value="">Hesap Seçiniz</MenuItem>
+              {transferData.map((account, index) => (
+                <MenuItem key={index} value={account.trg_account.username}>
+                  {account.trg_account.username}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Button
+            color="error"
+            onClick={handleClearTransfers}
+            sx={{
+              minWidth: 'auto',
+              padding: '8px',
+              marginX: 2
             }}
           >
-            <MenuItem value="">Hesap Seçiniz</MenuItem>
-            {transferData.map((account, index) => (
-              <MenuItem key={index} value={account.src_account.username}>
-                {account.src_account.username}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+            <DeleteIcon sx={{ fontSize: 20 }} />
+          </Button>
+        </Box>
 
         <Grid container spacing={2}>
           <Grid item xs={6}>
