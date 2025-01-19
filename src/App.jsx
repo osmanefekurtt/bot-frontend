@@ -5,7 +5,7 @@ import { extendTheme, styled } from '@mui/material/styles';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import { AppProvider } from '@toolpad/core/AppProvider';
 import { DashboardLayout } from '@toolpad/core/DashboardLayout';
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import LocalActivityIcon from '@mui/icons-material/LocalActivity';
 import AccountDetail from './pages/AccountDetail.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -19,8 +19,7 @@ import logo from './assets/logo.svg';
 import MoveDownIcon from '@mui/icons-material/MoveDown';
 import Config from './pages/Config.jsx';
 import SettingsIcon from '@mui/icons-material/Settings';
-import BuildIcon from '@mui/icons-material/Build';  // veya tercih ettiğiniz başka bir ikon
-
+import BuildIcon from '@mui/icons-material/Build';
 
 const demoTheme = extendTheme({
   colorSchemes: { light: true, dark: true },
@@ -67,29 +66,73 @@ export default function App(props) {
     { kind: 'header', title: 'Bot' },
     { segment: 'dashboard', title: 'Bot', icon: <DashboardIcon /> },
     { segment: 'tickets', title: 'Biletler', icon: <LocalActivityIcon /> },
-    {segment: 'transfers', title: 'Sepet Transfer', icon: <MoveDownIcon />},
-    {segment: 'transfer_detail', title: 'Transfer Detay', icon: <MoveDownIcon />},
+    { segment: 'transfers', title: 'Sepet Transfer', icon: <MoveDownIcon /> },
+    { segment: 'transfer_detail', title: 'Transfer Detay', icon: <MoveDownIcon /> },
     { segment: 'accounts', title: 'Hesaplar', children: [] },
     {
       kind: 'divider',
     },
     { segment: 'config', title: 'Ayarlar', icon: <SettingsIcon /> },
-    { 
-      segment: 'tools', 
-      title: 'Araçlar', 
-      icon: <BuildIcon />,  // veya başka bir ikon
+    {
+      segment: 'tools',
+      title: 'Araçlar',
+      icon: <BuildIcon />,
       children: [
-        { 
-          segment: 'set_proxy', 
+        {
+          segment: 'set_proxy',
           title: 'Proxy Dönüştürücü',
         }
-        // Buraya gelecekte başka araçlar da eklenebilir
       ]
     },
   ]);
 
   const [botStatus, setBotStatus] = useState(null);
   const { messages, sendMessage } = useWebSocket(WEB_SOCKET_URL);
+  const lastRefreshTime = useRef(0); // Initialize to 0 instead of Date.now()
+
+  // Handle refresh_user request with cooldown
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        const now = Date.now();
+        const timeSinceLastRefresh = now - lastRefreshTime.current;
+        
+        if (timeSinceLastRefresh >= 10000 && sendMessage) {
+          sendMessage({ action: 'refresh_user' });
+          lastRefreshTime.current = now;
+        }
+      }
+    }
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Send initial refresh_user on mount
+    if (sendMessage) {
+      sendMessage({ action: 'refresh_user' });
+      lastRefreshTime.current = Date.now();
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [sendMessage]);
+
+  useEffect(() => {
+    if (sendMessage) {
+      sendMessage({ action: 'accounts' });
+    }
+
+    const interval = setInterval(() => {
+      if (sendMessage) {
+        sendMessage({ action: 'accounts' });
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [sendMessage]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -100,14 +143,12 @@ export default function App(props) {
 
         if (message.action === 'accounts' && !message.isError) {
           const newAccounts = message.result.accounts.map((account, index) => {
-            // Hesap için benzersiz bir segment oluştur
             const segment = account.mbl?.device_id || `account-${index}`;
             
             return {
               segment,
               title: `${index + 1} - ${account.username}`,
               email: account.username,
-              // Detay sayfası için gereken diğer bilgileri de saklayalım
               accountData: {
                 username: account.username,
                 is_web: account.is_web,
@@ -133,22 +174,6 @@ export default function App(props) {
     }
   }, [messages]);
 
-  useEffect(() => {
-    if (sendMessage) {
-      sendMessage({ action: 'accounts' });
-    }
-
-    const interval = setInterval(() => {
-      if (sendMessage) {
-        sendMessage({ action: 'accounts' });
-      }
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [sendMessage]);
-
   const getPageContent = () => {
     const segments = router.pathname.split('/');
     const segment = segments[1];
@@ -161,7 +186,6 @@ export default function App(props) {
       const accountSegment = segments[2];
       const account = accounts.find((acc) => acc.segment === accountSegment);
       if (account) {
-        // Account detay sayfasına tüm hesap bilgilerini gönder
         return <AccountDetail 
           email={account.email} 
           accountData={account.accountData}
