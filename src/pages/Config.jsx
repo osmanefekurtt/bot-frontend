@@ -50,6 +50,9 @@ export default function Config() {
   const [ticketApi, setTicketApi] = useState('');
   const [storeKey, setStoreKey] = useState('');
   const [delay, setDelay] = useState(3);
+  const [selectedVenueId, setSelectedVenueId] = useState('');
+
+
 
   // Parse text area content into array, filtering empty lines and lines < 3 chars
   const parseTextToArray = (text) => {
@@ -155,7 +158,11 @@ export default function Config() {
         mode: 'otomatik',
         title: title,
         is_mobile: isMobile,
-        is_web: isWeb
+        is_web: isWeb,
+        user_key: userKey,
+        ticket_api: ticketApi,
+        store_key: storeKey,
+        delay: delay
       };
     }
 
@@ -168,6 +175,8 @@ export default function Config() {
     }
   };
 
+  // Fetch matches when component mounts
+  // Fetch matches when component mounts
   // Fetch matches when component mounts
   useEffect(() => {
     if (sendMessage && mode === 'otomatik') {
@@ -190,6 +199,18 @@ export default function Config() {
       });
     }
   }, [sendMessage, selectedMatch]);
+
+  useEffect(() => {
+    if (sendMessage && selectedCategory && mode === 'otomatik') {
+      const selectedCategoryData = categories.find(c => c.category_id.toString() === selectedCategory);
+      
+      sendMessage({ 
+        action: 'get_blocks',
+        venue_id: selectedVenueId,
+        category_name: selectedCategoryData?.name || ''
+      });
+    }
+  }, [sendMessage, selectedCategory, selectedMatch, selectedVenueId, categories]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -221,9 +242,6 @@ export default function Config() {
             setIsMobile(config.is_mobile || false);
             setIsWeb(config.is_web || false);
             
-            // Otomatik mod için match ve category id'lerini de set et
-            setSelectedMatch(config.event_id || '');
-            setSelectedCategory(config.category_id || '');
 
             setUserKey(config.user_key || '');
             setTicketApi(config.ticket_api || '');
@@ -237,18 +255,41 @@ export default function Config() {
           break;
         
         case 'get_matches':
-          if (!latestMessage.isError) {
-            setMatches(latestMessage.result || []);
+          if (!latestMessage.isError && latestMessage.result?.matches) {
+            const matchList = latestMessage.result.matches.map(match => {
+              const processedMatch = {
+                ...match,
+                match_id: match.match_id.toString(),
+                venue_id: match.venue_id?.toString() || ''
+              };
+              return processedMatch;
+            });
+            setMatches(matchList);
           } else {
+            setMatches([]); // Hata durumunda maç listesini sıfırla
             showNotification('Maç listesi alınamadı: ' + latestMessage.message);
           }
           break;
         
         case 'get_categories':
-          if (!latestMessage.isError) {
-            setCategories(latestMessage.result || []);
+          if (!latestMessage.isError && latestMessage.result?.categories) {
+            const categoryList = latestMessage.result.categories.map(category => ({
+              ...category,
+              id: category.category_id.toString()
+            }));
+            setCategories(categoryList);
           } else {
+            setCategories([]); // Hata durumunda kategori listesini sıfırla
+            setSelectedCategory(''); // Seçili kategoriyi de sıfırla
             showNotification('Kategori listesi alınamadı: ' + latestMessage.message);
+          }
+          break;
+        case 'get_blocks':
+          if (!latestMessage.isError && latestMessage.result?.blocks) {
+            const blocksText = latestMessage.result.blocks.join('\n');
+            setBlocks(blocksText);
+          } else {
+            showNotification('Blok listesi alınamadı: ' + latestMessage.message);
           }
           break;
       }
@@ -330,7 +371,7 @@ export default function Config() {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={4}>
+                  <Grid item xs={12} md={2}>
                     <TextField
                       fullWidth
                       label="Store Key"
@@ -340,6 +381,77 @@ export default function Config() {
                       placeholder="Store key"
                     />
                   </Grid>
+
+                  <Grid item xs={12} md={2}>
+                    <Box
+                      sx={{
+                        border: '1px solid',
+                        borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                        borderRadius: 1,
+                        height: '40px', // TextField'ın yüksekliği
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1
+                      }}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          const newValue = Math.max(0.2, parseFloat(delay || 3) - 0.2);
+                          setDelay(newValue.toFixed(1));
+                        }}
+                        sx={{
+                          border: '1px solid',
+                          borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                          padding: '4px'
+                        }}
+                      >
+                        <RemoveIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                      <TextField
+                        value={delay || 3}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const numValue = parseFloat(value);
+                          if (value === '' || (!isNaN(numValue) && numValue >= 0.2 && numValue <= 10)) {
+                            setDelay(value);
+                          }
+                        }}
+                        size="small"
+                        inputProps={{
+                          style: { textAlign: 'center', padding: '2px' },
+                          step: 0.2
+                        }}
+                        sx={{
+                          width: '45px',
+                          '& .MuiOutlinedInput-root': {
+                            height: '28px',
+                            '& input': {
+                              padding: '4px',
+                              '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': {
+                                '-webkit-appearance': 'none',
+                              },
+                            },
+                          },
+                        }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          const newValue = Math.min(10, parseFloat(delay || 3) + 0.2);
+                          setDelay(newValue.toFixed(1));
+                        }}
+                        sx={{
+                          border: '1px solid',
+                          borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
+                          padding: '4px'
+                        }}
+                      >
+                        <AddIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Box>
+                  </Grid>
                 </Grid>
               </Box>
             </Grid>
@@ -348,30 +460,41 @@ export default function Config() {
               <FormControl fullWidth size="small">
                 <Select
                   value={selectedMatch}
-                  onChange={(e) => setSelectedMatch(e.target.value)}
+                  onChange={(e) => {
+                    const selectedMatchData = matches.find(m => m.match_id.toString() === e.target.value);
+                    
+                    setSelectedMatch(e.target.value);
+                    setSelectedVenueId(selectedMatchData?.venue_id || '');
+                    setSelectedCategory('');
+                  }}
                   displayEmpty
                 >
-                  <MenuItem value="" disabled>Maç Seçin</MenuItem>
+                  <MenuItem value="">Maç Seçin</MenuItem>
                   {matches.map((match) => (
-                    <MenuItem key={match.id} value={match.id}>
+                    <MenuItem key={match.match_id} value={match.match_id.toString()}>
                       {match.name}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            
+                        
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
                 <Select
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                  }}
                   displayEmpty
                   disabled={!selectedMatch}
                 >
-                  <MenuItem value="" disabled>Kategori Seçin</MenuItem>
+                  <MenuItem value="">Kategori Seçin</MenuItem>
                   {categories.map((category) => (
-                    <MenuItem key={category.id} value={category.id}>
+                    <MenuItem 
+                      key={category.category_id} 
+                      value={category.category_id.toString()}
+                    >
                       {category.name}
                     </MenuItem>
                   ))}
