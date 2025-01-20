@@ -63,6 +63,7 @@ export default function App(props) {
   const demoWindow = window ? window() : undefined;
 
   const [accounts, setAccounts] = useState([]);
+  
   const [navigation, setNavigation] = useState([
     { kind: 'header', title: 'Bot' },
     { segment: 'dashboard', title: 'Bot', icon: <DashboardIcon /> },
@@ -144,6 +145,16 @@ export default function App(props) {
 
         if (message.action === 'accounts' && !message.isError) {
           const newAccounts = message.result.accounts.map((account, index) => {
+            const ticketsCount = message.result.tickets_count;
+          
+            // Mevcut başlığı al ve kontrol et
+            const currentTitle = document.title;
+            const titleWithoutCount = currentTitle.replace(/^\(\d+\)\s/, ''); // Eğer varsa mevcut sayıyı kaldır
+            
+            // Yeni başlığı oluştur
+            document.title = ticketsCount > 0 
+              ? `(${ticketsCount}) ${titleWithoutCount}`
+              : titleWithoutCount;
             const segment = account.mbl?.device_id || `account-${index}`;
             
             return {
