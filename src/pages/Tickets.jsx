@@ -1,16 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Card, CardContent, Typography, Grid, TextField, IconButton } from '@mui/material';
+import { Box, Button, Card, CardContent, Typography, Grid, TextField, IconButton, useTheme } from '@mui/material';
 import { CopyAll as CopyIcon } from '@mui/icons-material';
 import { useWebSocket } from '../hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from '../config.jsx';
+import { Alert, Collapse } from '@mui/material';
 
 export default function TicketsPage() {
+    const theme = useTheme();
     const categories = ['Mobil', 'Web', 'Hepsi'];
     const [selectedCategory, setSelectedCategory] = useState('Hepsi');
     const [tickets, setTickets] = useState([]);
     const [copiedText, setCopiedText] = useState('');
-    const [transferNotification, setTransferNotification] = useState('');
     const { messages, sendMessage } = useWebSocket(WEB_SOCKET_URL);
+
+    const [notification, setNotification] = useState({
+        message: '',
+        type: 'info',
+        show: false
+    });
+
+
+    const showNotification = (message, type = 'info') => {
+      setNotification({
+        message,
+        type,
+        show: true
+      });
+      setTimeout(() => {
+        setNotification(prev => ({ ...prev, show: false }));
+      }, 3000);
+    };
 
     useEffect(() => {
         const intervalId = setInterval(() => {
@@ -26,19 +45,28 @@ export default function TicketsPage() {
         if (messages.length > 0) {
             const latestMessage = messages[messages.length - 1];
             if (latestMessage.action === 'tickets') {
-                if (latestMessage.isError || latestMessage.result.length === 0) {
+                if (latestMessage.isError) {
+                    showNotification('Biletler yüklenemedi', 'error');
+                    setTickets([]);
+                } else if (!latestMessage.result || !latestMessage.result.tickets || latestMessage.result.tickets.length === 0) {
+                    showNotification('Aktif bilet bulunamadı', 'warning');
                     setTickets([]);
                 } else {
                     const unexpiredTickets = latestMessage.result.tickets.filter((ticket) => {
                         const expiryDate = new Date(ticket.expiry_time);
                         return expiryDate > new Date();
                     });
+                    
+                    if (unexpiredTickets.length === 0) {
+                        showNotification('Süresiz bilet bulunamadı', 'warning');
+                    }
+                    
                     setTickets(unexpiredTickets);
                 }
             }
         }
     }, [messages]);
-
+    
     const getRemainingTime = (expiryTime) => {
         const expiryDate = new Date(expiryTime);
         const currentDate = new Date();
@@ -54,16 +82,18 @@ export default function TicketsPage() {
     };
 
     const copyToClipboard = (text) => {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(() => {
-                setCopiedText(`${text} kopyalandı!`);
-                setTimeout(() => setCopiedText(''), 2000);
+              showNotification(`${text} kopyalandı`, 'success');
             }).catch((err) => {
-                console.error('Kopyalama başarısız oldu: ', err);
-                fallbackCopyToClipboard(text);
+              showNotification('Kopyalama başarısız', 'error');
             });
-        } else {
-            fallbackCopyToClipboard(text);
+          } else {
+            throw new Error('Clipboard API desteklenmiyor');
+          }
+        } catch (err) {
+          showNotification('Kopyalama başarısız', 'error');
         }
     };
     
@@ -83,18 +113,22 @@ export default function TicketsPage() {
     };
 
     const handleTransfer = (rowId, sourceEmail, sourcePassword, targetEmail, targetPassword, isMobile) => {
+        if (!targetEmail || !targetPassword) {
+          showNotification('Lütfen email ve şifre bilgilerini giriniz', 'warning');
+          return;
+        }
+      
         if (sendMessage) {
-            sendMessage({
-                action: isMobile ? 'mbl_transfer' : 'web_transfer',
-                rowId,
-                sourceEmail: sourceEmail,
-                sourcePassword: sourcePassword,
-                targetEmail: targetEmail,
-                targetPassword: targetPassword
-            });
-            
-            setTransferNotification('Transfer işlemi başladı');
-            setTimeout(() => setTransferNotification(''), 2000);
+          sendMessage({
+            action: isMobile ? 'mbl_transfer' : 'web_transfer',
+            rowId,
+            sourceEmail: sourceEmail,
+            sourcePassword: sourcePassword,
+            targetEmail: targetEmail,
+            targetPassword: targetPassword
+          });
+          
+          showNotification('Transfer işlemi başladı', 'info');
         }
     };
 
@@ -263,22 +297,25 @@ export default function TicketsPage() {
                 ))}
             </Grid>
 
-            {(copiedText || transferNotification) && (
-                <Box sx={{
+
+            <Collapse in={notification.show}>
+                <Alert 
+                    severity={notification.type || 'info'}
+                    sx={{ 
                     position: 'fixed',
-                    bottom: '20px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    backgroundColor: 'green',
-                    color: 'white',
-                    padding: '5px 15px',
-                    borderRadius: '5px',
-                    fontSize: '0.9rem',
-                    zIndex: 1000,
-                }}>
-                    {copiedText || transferNotification}
-                </Box>
-            )}
+                    top: 20,
+                    right: 20,
+                    zIndex: 9999,
+                    minWidth: '300px',
+                    maxWidth: '400px',
+                    boxShadow: theme.shadows[3],
+                    backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
+                    color: theme.palette.mode === 'dark' ? 'white' : 'inherit'
+                    }}
+                >
+                    {notification.message}
+                </Alert>
+            </Collapse>
         </Box>
     );
 }

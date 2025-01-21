@@ -53,9 +53,12 @@ export default function SetProxy() {
 
   return (
     <Box sx={{ 
-      p: 3,
-      minHeight: '100vh',
+      p: 3, 
+      height: '100%',
       backgroundColor: theme.palette.mode === 'dark' ? '#121212' : '#f4f4f4',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
     }}>
       <Paper 
         elevation={3} 
@@ -64,6 +67,7 @@ export default function SetProxy() {
           display: 'flex',
           gap: 2,
           backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
+          width: '90%'
         }}
       >
         <Box sx={{ flex: 1 }}>

@@ -7,6 +7,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useRef } from 'react'; 
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import LockIcon from '@mui/icons-material/Lock';
+import { Alert, Collapse } from '@mui/material';
 
 export default function Dashboard() {
   const theme = useTheme();
@@ -42,8 +43,28 @@ export default function Dashboard() {
     return date.toLocaleString('tr-TR', options);
   };
 
+  const [notification, setNotification] = useState({
+    message: '',
+    type: 'info',
+    show: false
+  });
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({
+      message,
+      type,
+      show: true
+    });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
+
   const copyToClipboard = (text) => {
-    if (!text || text === 'N/A') return;
+    if (!text || text === 'N/A') {
+      showNotification('Kopyalanacak metin yok', 'warning');
+      return;
+    }
     
     try {
         // Geçici bir textarea elementi oluştur
@@ -65,11 +86,10 @@ export default function Dashboard() {
         document.body.removeChild(textArea);
         
         // Başarı mesajını göster
-        setCopiedText(`${text} kopyalandı!`);
-        setTimeout(() => setCopiedText(''), 2000);
+        showNotification(`${text} kopyalandı`, 'success');
     } catch (err) {
         console.error('Kopyalama hatası:', err);
-        alert('Kopyalama başarısız oldu: ' + err.message);
+        showNotification('Kopyalama başarısız oldu', 'error');
     }
   };
 
@@ -83,6 +103,7 @@ export default function Dashboard() {
     if (sendMessage) {
       sendMessage({ action: 'bot_start' });
       fetchBotData();
+      showNotification('Bot başlatılıyor...', 'info');
     }
   };
 
@@ -93,6 +114,7 @@ export default function Dashboard() {
       if (sendMessage) {
         sendMessage({ action: 'bot_stop' });
         fetchBotData();
+        showNotification('Bot durduruluyor...', 'warning');
       }
     }
   };
@@ -112,8 +134,17 @@ export default function Dashboard() {
         }
         if (message.action == "bot_start")  {
           if (message.isError) {
-            alert(message.message);
+            showNotification(message.error.message, 'error');
             messages.length = 0;
+          } else {
+            showNotification('Bot başarıyla başlatıldı', 'success');
+          }
+        }
+        if (message.action === 'delete_log') {
+          if (!message.isError) {
+            showNotification('Log çıktıları başarıyla silindi', 'success');
+          } else {
+            showNotification('Log çıktıları silinemedi', 'error');
           }
         }
       });
@@ -136,6 +167,9 @@ export default function Dashboard() {
       link.href = URL.createObjectURL(blob);
       link.download = `${logType}.txt`;
       link.click();
+      showNotification(`${logType} indirildi`, 'success');
+    } else {
+      showNotification('İndirilecek log bulunamadı', 'warning');
     }
   };
 
@@ -146,6 +180,7 @@ export default function Dashboard() {
           action: 'delete_log',
           logType: logType,
         });
+        showNotification(`${logType} çıktıları siliniyor`, 'info');
       }
     }
   };
@@ -469,6 +504,24 @@ export default function Dashboard() {
           {copiedText}
         </Box>
       )}
+      <Collapse in={!!notification.show}>
+        <Alert 
+          severity={notification.type || 'info'}
+          sx={{ 
+            position: 'fixed',
+            top: 20,
+            right: 20,
+            zIndex: 9999,
+            minWidth: '300px',
+            maxWidth: '400px',
+            boxShadow: theme.shadows[3],
+            backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
+            color: theme.palette.mode === 'dark' ? 'white' : 'inherit'
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Collapse>
     </Box>
   );
 }

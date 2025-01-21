@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Box,
   Paper,
@@ -10,9 +10,14 @@ import {
   MenuItem,
   Grid,
   Divider,
-  Button
+  Button,
+  Alert,
+  Collapse,
+  IconButton
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
+import LockIcon from '@mui/icons-material/Lock';
 import { useWebSocket } from '../hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from '../config.jsx';
 
@@ -24,6 +29,47 @@ export default function TransferDetail() {
   const [mblLog, setMblLog] = useState([]);
   const [webLog, setWebLog] = useState([]);
   const [isTransferActive, setIsTransferActive] = useState(false);
+
+  // Log referansları
+  const mblLogRef = useRef(null);
+  const webLogRef = useRef(null);
+
+  // Auto scroll state'leri
+  const [mblAutoScroll, setMblAutoScroll] = useState(true);
+  const [webAutoScroll, setWebAutoScroll] = useState(true);
+
+  // Bildirim state'i
+  const [notification, setNotification] = useState({
+    message: '',
+    type: 'info',
+    show: false
+  });
+
+  // Bildirim fonksiyonu
+  const showNotification = (message, type = 'info') => {
+    setNotification({
+      message,
+      type,
+      show: true
+    });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
+
+  // Mobil log için auto scroll effect
+  useEffect(() => {
+    if (mblAutoScroll && mblLogRef.current) {
+      mblLogRef.current.scrollTop = mblLogRef.current.scrollHeight;
+    }
+  }, [mblLog, mblAutoScroll]);
+
+  // Web log için auto scroll effect
+  useEffect(() => {
+    if (webAutoScroll && webLogRef.current) {
+      webLogRef.current.scrollTop = webLogRef.current.scrollHeight;
+    }
+  }, [webLog, webAutoScroll]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -52,6 +98,15 @@ export default function TransferDetail() {
           }
         }
       }
+
+      // Transfer işlemleri için bildirim
+      if (latestMessage.action === 'mbl_transfer' || latestMessage.action === 'web_transfer') {
+        if (latestMessage.isError) {
+          showNotification(latestMessage.message || 'Transfer işlemi başarısız', 'error');
+        } else {
+          showNotification('Transfer işlemi başarıyla gerçekleştirildi', 'success');
+        }
+      }
     }
   }, [messages, selectedAccount]);
 
@@ -64,6 +119,7 @@ export default function TransferDetail() {
         targetEmail: selectedAccount,
         targetPassword: ''
       });
+      showNotification('Transfer işlemi başlatılıyor...', 'info');
     }
   };
 
@@ -90,6 +146,7 @@ export default function TransferDetail() {
         setMblLog([]);
         setWebLog([]);
         setIsTransferActive(false);
+        showNotification('Transfer geçmişi silindi', 'success');
       }
     }
   };
@@ -152,53 +209,71 @@ export default function TransferDetail() {
 
         <Grid container spacing={2}>
           <Grid item xs={6}>
-            <Box>
-              <Typography variant="subtitle1" gutterBottom>
-                Mobil Çıktılar
-              </Typography>
-              <Divider sx={{ mb: 1 }} />
-              <Box sx={{
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle1">Mobil Çıktılar</Typography>
+              <IconButton 
+                onClick={() => setMblAutoScroll(!mblAutoScroll)}
+                sx={{
+                  color: !mblAutoScroll ? 'success.main' : 'warning.main',
+                }}
+              >
+                {!mblAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
+              </IconButton>
+            </Box>
+            <Divider sx={{ mb: 1 }} />
+            <Box 
+              ref={mblLogRef}
+              sx={{
                 height: '250px',
                 overflowY: 'auto',
                 backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
                 borderRadius: theme.shape.borderRadius,
                 p: 1
-              }}>
-                {mblLog.length > 0 ? (
-                  mblLog.map((log, index) => (
-                    <div key={index} style={{ color: log.color }}>
-                      {log.message}
-                    </div>
-                  ))
-                ) : (
-                  <div>Henüz log bulunmuyor.</div>
-                )}
-              </Box>
+              }}
+            >
+              {mblLog.length > 0 ? (
+                mblLog.map((log, index) => (
+                  <div key={index} style={{ color: log.color }}>
+                    {log.message}
+                  </div>
+                ))
+              ) : (
+                <div>Henüz log bulunmuyor.</div>
+              )}
             </Box>
           </Grid>
           <Grid item xs={6}>
-            <Box>
-              <Typography variant="subtitle1" gutterBottom>
-                Web Çıktılar
-              </Typography>
-              <Divider sx={{ mb: 1 }} />
-              <Box sx={{
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle1">Web Çıktılar</Typography>
+              <IconButton 
+                onClick={() => setWebAutoScroll(!webAutoScroll)}
+                sx={{
+                  color: !webAutoScroll ? 'success.main' : 'warning.main',
+                }}
+              >
+                {!webAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
+              </IconButton>
+            </Box>
+            <Divider sx={{ mb: 1 }} />
+            <Box 
+              ref={webLogRef}
+              sx={{
                 height: '250px',
                 overflowY: 'auto',
                 backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
                 borderRadius: theme.shape.borderRadius,
                 p: 1
-              }}>
-                {webLog.length > 0 ? (
-                  webLog.map((log, index) => (
-                    <div key={index} style={{ color: log.color }}>
-                      {log.message}
-                    </div>
-                  ))
-                ) : (
-                  <div>Henüz log bulunmuyor.</div>
-                )}
-              </Box>
+              }}
+            >
+              {webLog.length > 0 ? (
+                webLog.map((log, index) => (
+                  <div key={index} style={{ color: log.color }}>
+                    {log.message}
+                  </div>
+                ))
+              ) : (
+                <div>Henüz log bulunmuyor.</div>
+              )}
             </Box>
           </Grid>
         </Grid>
@@ -206,6 +281,27 @@ export default function TransferDetail() {
         <Box sx={{ mt: 2 }}>
           Transfer Durumu: {isTransferActive ? 'Aktif' : 'Aktif Değil'}
         </Box>
+
+        {/* Bildirim Kutusu */}
+        <Collapse in={notification.show}>
+          <Alert 
+            severity={notification.type || 'info'}
+            sx={{ 
+              position: 'fixed',
+              top: 20,
+              right: 20,
+              zIndex: 9999,
+              minWidth: '300px',
+              maxWidth: '400px',
+              boxShadow: theme.shadows[3],
+              backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
+              color: theme.palette.mode === 'dark' ? 'white' : 'inherit'
+            }}
+            onClose={() => setNotification({ show: false, message: '', type: 'info' })}
+          >
+            {notification.message}
+          </Alert>
+        </Collapse>
       </Paper>
     </Box>
   );

@@ -15,6 +15,7 @@ import WEB_SOCKET_URL from './config.jsx';
 import TicketsPage from './pages/Tickets.jsx';
 import CartTransfer from './pages/CartTransfer.jsx';
 import TransferDetail from './pages/TransferDetail.jsx';
+import ProxyChecker from './pages/ProxyChecker.jsx';
 import SetProxy from './pages/SetProxy.jsx';
 import logo from './assets/logo.svg';
 import MoveDownIcon from '@mui/icons-material/MoveDown';
@@ -83,6 +84,10 @@ export default function App(props) {
         {
           segment: 'set_proxy',
           title: 'Proxy Dönüştürücü',
+        },
+        {
+          segment: 'check_proxy',
+          title: 'Proxy Kontrol',
         }
       ]
     },
@@ -225,6 +230,13 @@ export default function App(props) {
       const subSegment = segments[2];
       if (subSegment === 'set_proxy') {
         return <SetProxy messages={messages} sendMessage={sendMessage} />;
+      }
+    }
+
+    if (segment === 'tools') {
+      const subSegment = segments[2];
+      if (subSegment === 'check_proxy') {
+        return <ProxyChecker messages={messages} sendMessage={sendMessage} />;
       }
     }
 

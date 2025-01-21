@@ -11,9 +11,9 @@ import {
   Paper,
   useTheme,
   Typography,
-  Alert,
   Collapse,
-  IconButton
+  IconButton,
+  Alert
 } from '@mui/material';
 import { useWebSocket } from '../hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from '../config.jsx';
@@ -57,9 +57,25 @@ export default function AccountDetail({ email }) {
   const [basketData, setBasketData] = useState([]);
   const { messages, sendMessage } = useWebSocket(WEB_SOCKET_URL);
   const [copiedText, setCopiedText] = useState('');
-  const [notification, setNotification] = useState({ message: '', type: '', show: false });
+  const [notification, setNotification] = useState({
+    message: '',
+    type: 'info',
+    show: false
+  });
+  
+  const showNotification = (message, type = 'info') => {
+    setNotification({
+      message,
+      type,
+      show: true
+    });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
 
-  // Handle delete ticket
+  
+
   const handleDeleteTicket = (rowId, platform) => {
     if (sendMessage) {
       sendMessage({
@@ -68,6 +84,7 @@ export default function AccountDetail({ email }) {
         rowId: rowId,
         platform
       });
+      showNotification('Bilet silme işlemi başlatılıyor...', 'info'); // Bildirim ekledim
     }
   };
 
@@ -96,63 +113,37 @@ export default function AccountDetail({ email }) {
   useEffect(() => {
     if (messages.length > 0) {
       const latestMessage = messages[messages.length - 1];
-
+  
       // Eğer gelen mesaj mevcut email için değilse işleme
       if (latestMessage.email && latestMessage.email !== email) {
         return;
       }
-
+  
       if (latestMessage.action === 'account_detail' && !latestMessage.isError) {
         setAccountData(latestMessage?.result?.account);
       }
-
+  
       if (latestMessage.action === 'mbl_get_basket' || latestMessage.action === 'web_get_basket') {
         if (latestMessage.isError) {
-          // Hata durumunda kırmızı uyarı göster
-          setNotification({
-            message: latestMessage.error.message || 'Bir hata oluştu',
-            type: 'error',
-            show: true
-          });
+          showNotification(latestMessage.error.message || 'Sepet bilgisi alınamadı', 'error');
         } else {
           setBasketData(latestMessage.result.tickets || []);
-          console.log(latestMessage.result.tickets);
           
-          if (!latestMessage.result || latestMessage.result.length === 0) {
-            setNotification({
-              message: 'Sepet boş',
-              type: 'info',
-              show: true
-            });
+          if (!latestMessage.result || !latestMessage.result.tickets || latestMessage.result.tickets.length === 0) {
+            showNotification('Sepet boş', 'warning');
+          } else {
+            showNotification(`${latestMessage.result.tickets.length} adet bilet bulundu`, 'success');
           }
         }
-        
-        // Her durumda 3 saniye sonra bildirimi kaldır
-        setTimeout(() => {
-          setNotification(prev => ({ ...prev, show: false }));
-        }, 3000);
       }
-
-      // Delete ticket response handler
+  
       if (latestMessage.action === 'delete_ticket') {
         if (latestMessage.isError) {
-          setNotification({
-            message: latestMessage.message || 'Bilet silme işlemi başarısız',
-            type: 'error',
-            show: true
-          });
+          showNotification(latestMessage.message || 'Bilet silme işlemi başarısız', 'error');
         } else {
-          setNotification({
-            message: 'Bilet başarıyla silindi',
-            type: 'success',
-            show: true
-          });
-
-          setBasketData(basketData.filter((ticket) => ticket.rowId !== latestMessage.rowId));
+          showNotification('Bilet başarıyla silindi', 'success');
+          setBasketData(basketData.filter((ticket) => ticket.rowId !== latestMessage.result.rowId));
         }
-        setTimeout(() => {
-          setNotification(prev => ({ ...prev, show: false }));
-        }, 3000);
       }
     }
   }, [messages, email]);
@@ -163,11 +154,15 @@ export default function AccountDetail({ email }) {
         action: platform === 'Web' ? 'web_get_basket' : 'mbl_get_basket',
         email: email
       });
+      showNotification(`${platform} sepet bilgisi çekiliyor...`, 'info'); // Bildirim ekledim
     }
   };
 
-  const copyToClipboard = (text) => {
-    if (!text || text === 'N/A') return;
+  const copyToClipboard = (text, label = '') => {
+    if (!text || text === 'N/A') {
+      showNotification('Kopyalanacak metin yok', 'warning');
+      return;
+    }
     
     try {
         // Geçici bir textarea elementi oluştur
@@ -188,12 +183,10 @@ export default function AccountDetail({ email }) {
         // Geçici elementi temizle
         document.body.removeChild(textArea);
         
-        // Başarı mesajını göster
-        setCopiedText(`${text} kopyalandı!`);
-        setTimeout(() => setCopiedText(''), 2000);
+        showNotification(`${label ? label + ': ' : ''}${text} kopyalandı`, 'success');
     } catch (err) {
         console.error('Kopyalama hatası:', err);
-        alert('Kopyalama başarısız oldu: ' + err.message);
+        showNotification('Kopyalama başarısız oldu', 'error');
     }
   };
 
@@ -214,10 +207,16 @@ export default function AccountDetail({ email }) {
         }}
       >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 'auto', marginBottom: 'auto' }}>
-          <Typography sx={{ cursor: 'pointer' }} onClick={() => copyToClipboard(accountData?.username)}>
+          <Typography 
+            sx={{ cursor: 'pointer' }} 
+            onClick={() => copyToClipboard(accountData?.username, 'Email')}
+          >
             Email: {accountData?.username || 'N/A'}
           </Typography>
-          <Typography sx={{ cursor: 'pointer' }} onClick={() => copyToClipboard(accountData?.password)}>
+          <Typography 
+            sx={{ cursor: 'pointer' }} 
+            onClick={() => copyToClipboard(accountData?.password, 'Şifre')}
+          >
             Şifre: {accountData?.password || 'N/A'}
           </Typography>
         </Box>
@@ -240,21 +239,6 @@ export default function AccountDetail({ email }) {
           <div>Şifre: {accountData?.password || 'N/A'}</div>
         </Box>
       </Box>
-
-      {/* Notification */}
-      <Collapse in={notification.show}>
-        <Box sx={{ mb: 2 }}>
-          <Alert 
-            severity={notification.type}
-            sx={{ 
-              backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
-              color: theme.palette.mode === 'dark' ? 'white' : 'inherit'
-            }}
-          >
-            {notification.message}
-          </Alert>
-        </Box>
-      </Collapse>
 
       {/* Kontrol Paneli */}
       <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -345,6 +329,27 @@ export default function AccountDetail({ email }) {
           {copiedText}
         </Box>
       )}
+
+
+      {/* Bildirim Kutusu */}
+      <Collapse in={notification.show}>
+        <Alert 
+          severity={notification.type || 'info'}
+          sx={{ 
+            position: 'fixed',
+            top: 20,
+            right: 20,
+            zIndex: 9999,
+            minWidth: '300px',
+            maxWidth: '400px',
+            boxShadow: theme.shadows[3],
+            backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
+            color: theme.palette.mode === 'dark' ? 'white' : 'inherit'
+          }}
+        >
+          {notification.message}
+        </Alert>
+      </Collapse>
     </Box>
   );
 }
