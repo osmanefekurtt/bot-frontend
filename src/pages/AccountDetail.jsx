@@ -74,17 +74,18 @@ export default function AccountDetail({ email }) {
     }, 3000);
   };
 
-  
-
-  const handleDeleteTicket = (rowId, platform) => {
+  const handleDeleteTicket = (rowId) => {
     if (sendMessage) {
+      const action = basketData.find(ticket => ticket.rowId === rowId).platform === 'Web' 
+        ? 'web_delete_ticket' 
+        : 'mbl_delete_ticket';
+      
       sendMessage({
-        action: 'delete_ticket',
+        action: action,
         email: email,
-        rowId: rowId,
-        platform
+        rowId: rowId
       });
-      showNotification('Bilet silme işlemi başlatılıyor...', 'info'); // Bildirim ekledim
+      showNotification('Bilet silme işlemi başlatılıyor...', 'info');
     }
   };
 
@@ -123,7 +124,7 @@ export default function AccountDetail({ email }) {
         setAccountData(latestMessage?.result?.account);
       }
   
-      if (latestMessage.action === 'mbl_get_basket' || latestMessage.action === 'web_get_basket') {
+      if (latestMessage.action === 'web_get_basket' || latestMessage.action === 'mbl_get_basket') {
         if (latestMessage.isError) {
           showNotification(latestMessage.error.message || 'Sepet bilgisi alınamadı', 'error');
         } else {
@@ -137,7 +138,7 @@ export default function AccountDetail({ email }) {
         }
       }
   
-      if (latestMessage.action === 'delete_ticket') {
+      if (latestMessage.action === 'web_delete_ticket' || latestMessage.action === 'mbl_delete_ticket') {
         if (latestMessage.isError) {
           showNotification(latestMessage.message || 'Bilet silme işlemi başarısız', 'error');
         } else {
@@ -148,13 +149,14 @@ export default function AccountDetail({ email }) {
     }
   }, [messages, email]);
 
-  const fetchBasket = (platform) => {
+  const fetchBasket = () => {
     if (sendMessage) {
+      const action = accountData?.web?.token ? 'web_get_basket' : 'mbl_get_basket';
       sendMessage({
-        action: platform === 'Web' ? 'web_get_basket' : 'mbl_get_basket',
+        action: action,
         email: email
       });
-      showNotification(`${platform} sepet bilgisi çekiliyor...`, 'info'); // Bildirim ekledim
+      showNotification(`Sepet bilgisi çekiliyor...`, 'info');
     }
   };
 
@@ -244,19 +246,11 @@ export default function AccountDetail({ email }) {
       <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
         <Button
           variant="contained"
-          onClick={() => fetchBasket("Mobile")}
-          disabled={!accountData?.mbl?.token}
+          onClick={fetchBasket}
+          disabled={!accountData?.mbl?.token && !accountData?.web?.token}
           sx={{ height: 30 }}
         >
-          MOBİL SEPET BİLGİSİNİ ÇEK
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => fetchBasket("Web")}
-          disabled={!accountData?.web?.token}
-          sx={{ height: 30 }}
-        >
-          WEB SEPET BİLGİSİNİ ÇEK
+          SEPET BİLGİSİNİ ÇEK
         </Button>
         <Typography variant="body2" color="error">
           Uyarı: Her tıklamada passo'ya istek atılır.
@@ -294,7 +288,7 @@ export default function AccountDetail({ email }) {
                 </TableCell>
                 <TableCell>
                   <IconButton
-                    onClick={() => handleDeleteTicket(ticket.rowId, ticket.platform)}
+                    onClick={() => handleDeleteTicket(ticket.rowId)}
                     size="small"
                     sx={{ 
                       color: theme.palette.error.main,

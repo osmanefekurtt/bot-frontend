@@ -44,7 +44,7 @@ export default function ProxyChecker() {
       if (sendMessage) {
         sendMessage({ action: 'get_check_proxy' });
       }
-    }, 100);
+    }, 500);
 
     return () => clearInterval(interval);
   }, [sendMessage]);
