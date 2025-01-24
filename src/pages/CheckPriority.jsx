@@ -101,19 +101,11 @@ export default function CheckPriority() {
 
     const handlePriorityCodesChange = (e) => {
         const codes = e.target.value.split('\n').filter(code => code.trim());
-        if (codes.length > 50) {
-            showNotification('Maximum 50 satır girebilirsiniz', 'warning');
-            return;
-        }
         setPriorityCodes(e.target.value);
     };
 
     const handleCheck = () => {
         const codes = priorityCodes.split('\n').filter(code => code.trim());
-        if (codes.length > 50) {
-            showNotification('Maximum 50 satır girebilirsiniz', 'error');
-            return;
-        }
         
         if (!selectedMatch || !selectedPriority) {
             showNotification('Lütfen maç ve öncelik seçiniz', 'warning');
@@ -178,7 +170,7 @@ export default function CheckPriority() {
 
             <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
-                    <Typography variant="h6" gutterBottom>Öncelik Kodları (Max: 50)</Typography>
+                    <Typography variant="h6" gutterBottom>Öncelik Kodları (Öneri: 50 satır)</Typography>
                     <TextField
                         fullWidth
                         multiline
