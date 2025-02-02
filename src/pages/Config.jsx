@@ -51,6 +51,9 @@ export default function Config() {
   const [storeKey, setStoreKey] = useState('');
   const [delay, setDelay] = useState(3);
   const [selectedVenueId, setSelectedVenueId] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [loginUrl, setLoginUrl] = useState('https://www.passo.com.tr/tr/giris');
+  const [siteKey, setSiteKey] = useState('0x4AAAAAAA4rK8-JCAhwWhV4');
 
 
 
@@ -74,6 +77,14 @@ export default function Config() {
   };
 
   const handleSubmit = () => {
+    // Web-specific validation
+    if (isWeb) {
+      if (!apiKey || !loginUrl || !siteKey) {
+        showNotification('Web platformu için API Key, Login URL ve Site Key alanları zorunludur.');
+        return;
+      }
+    }
+
     // Validasyon kontrolleri
     if (mode === 'manuel') {
       if (!eventId || !categoryId) {
@@ -142,7 +153,10 @@ export default function Config() {
         user_key: userKey,
         ticket_api: ticketApi,
         store_key: storeKey,
-        delay: delay
+        delay: delay,
+        api_key: isWeb ? apiKey : '',
+        login_url: isWeb ? loginUrl : '',
+        site_key: isWeb ? siteKey : ''
       };
     } else {
       // Otomatik mod için aynı yapı
@@ -162,7 +176,10 @@ export default function Config() {
         user_key: userKey,
         ticket_api: ticketApi,
         store_key: storeKey,
-        delay: delay
+        delay: delay,
+        api_key: isWeb ? apiKey : '',
+        login_url: isWeb ? loginUrl : '',
+        site_key: isWeb ? siteKey : ''
       };
     }
 
@@ -247,6 +264,10 @@ export default function Config() {
             setTicketApi(config.ticket_api || '');
             setStoreKey(config.store_key || '');  // Yeni eklenen
             setDelay(config.delay || 3);
+
+            setApiKey(config.api_key || '');
+            setLoginUrl(config.login_url || 'https://www.passo.com.tr/tr/giris');
+            setSiteKey(config.site_key || '0x4AAAAAAA4rK8-JCAhwWhV4');
 
             showNotification('Konfigürasyon başarıyla yüklendi', 'success');
           } else {
@@ -348,7 +369,7 @@ export default function Config() {
           // Otomatik Mode Content
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Box sx={{ mb: 3 }}>
+              <Box>
                 <Grid container spacing={2}>
                   <Grid item xs={12} md={4}>
                     <TextField
@@ -512,6 +533,41 @@ export default function Config() {
                 placeholder="Sitenin başlığını girin"
               />
             </Grid>
+
+            {isWeb && (
+              <>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="API Key"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    size="small"
+                    placeholder="API Key giriniz"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Login URL"
+                    value={loginUrl}
+                    onChange={(e) => setLoginUrl(e.target.value)}
+                    size="small"
+                    placeholder="Login URL giriniz"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Site Key"
+                    value={siteKey}
+                    onChange={(e) => setSiteKey(e.target.value)}
+                    size="small"
+                    placeholder="Site Key giriniz"
+                  />
+                </Grid>
+              </>
+            )}
             
             <Grid item xs={12} md={4}>
               <TextField
@@ -568,7 +624,7 @@ export default function Config() {
           // Manuel Mode Content
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Box sx={{ mb: 3 }}>
+              <Box>
                 <Grid container spacing={2}>
                   <Grid item xs={12} md={4}>
                     <TextField
@@ -706,6 +762,41 @@ export default function Config() {
                 placeholder="Sitenin başlığını girin"
               />
             </Grid>
+
+            {isWeb && (
+              <>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="API Key"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    size="small"
+                    placeholder="API Key giriniz"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Login URL"
+                    value={loginUrl}
+                    onChange={(e) => setLoginUrl(e.target.value)}
+                    size="small"
+                    placeholder="Login URL giriniz"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Site Key"
+                    value={siteKey}
+                    onChange={(e) => setSiteKey(e.target.value)}
+                    size="small"
+                    placeholder="Site Key giriniz"
+                  />
+                </Grid>
+              </>
+            )}
             
             <Grid item xs={12} md={4}>
               <TextField

@@ -24,28 +24,28 @@ import WEB_SOCKET_URL from '../config.jsx';
 export default function TransferDetail() {
   const theme = useTheme();
   const { messages, sendMessage } = useWebSocket(WEB_SOCKET_URL);
-  const [transferData, setTransferData] = useState([]);
-  const [selectedAccount, setSelectedAccount] = useState('');
+  
+  const [mobileTransferData, setMobileTransferData] = useState([]);
+  const [webTransferData, setWebTransferData] = useState([]);
+  const [selectedMobileAccount, setSelectedMobileAccount] = useState('');
+  const [selectedWebAccount, setSelectedWebAccount] = useState('');
+  
   const [mblLog, setMblLog] = useState([]);
   const [webLog, setWebLog] = useState([]);
   const [isTransferActive, setIsTransferActive] = useState(false);
 
-  // Log referansları
   const mblLogRef = useRef(null);
   const webLogRef = useRef(null);
 
-  // Auto scroll state'leri
   const [mblAutoScroll, setMblAutoScroll] = useState(true);
   const [webAutoScroll, setWebAutoScroll] = useState(true);
 
-  // Bildirim state'i
   const [notification, setNotification] = useState({
     message: '',
     type: 'info',
     show: false
   });
 
-  // Bildirim fonksiyonu
   const showNotification = (message, type = 'info') => {
     setNotification({
       message,
@@ -57,14 +57,12 @@ export default function TransferDetail() {
     }, 3000);
   };
 
-  // Mobil log için auto scroll effect
   useEffect(() => {
     if (mblAutoScroll && mblLogRef.current) {
       mblLogRef.current.scrollTop = mblLogRef.current.scrollHeight;
     }
   }, [mblLog, mblAutoScroll]);
 
-  // Web log için auto scroll effect
   useEffect(() => {
     if (webAutoScroll && webLogRef.current) {
       webLogRef.current.scrollTop = webLogRef.current.scrollHeight;
@@ -85,21 +83,29 @@ export default function TransferDetail() {
     if (messages.length > 0) {
       const latestMessage = messages[messages.length - 1];
       if (latestMessage.action === 'get_transfer_data' && !latestMessage.isError) {
-        setTransferData(latestMessage.result.transfers);
+        setMobileTransferData(latestMessage.result.transfers || []);
+        setWebTransferData(latestMessage.result.web_transfer || []);
         
-        if (selectedAccount) {
+        if (selectedMobileAccount) {
           const selectedTransfer = latestMessage.result.transfers.find(
-            (transfer) => transfer.trg_account.username === selectedAccount
+            (transfer) => transfer.trg_account.username === selectedMobileAccount
           );
           if (selectedTransfer) {
             setMblLog(selectedTransfer.mbl_log);
-            setWebLog(selectedTransfer.web_log);
             setIsTransferActive(selectedTransfer.is_active);
+          }
+        }
+
+        if (selectedWebAccount) {
+          const selectedWebTransfer = latestMessage.result.web_transfer.find(
+            (transfer) => transfer.trg_account.username === selectedWebAccount
+          );
+          if (selectedWebTransfer) {
+            setWebLog(selectedWebTransfer.web_log);
           }
         }
       }
 
-      // Transfer işlemleri için bildirim
       if (latestMessage.action === 'mbl_transfer' || latestMessage.action === 'web_transfer') {
         if (latestMessage.isError) {
           showNotification(latestMessage.message || 'Transfer işlemi başarısız', 'error');
@@ -107,46 +113,65 @@ export default function TransferDetail() {
           showNotification('Transfer işlemi başarıyla gerçekleştirildi', 'success');
         }
       }
-    }
-  }, [messages, selectedAccount]);
 
-  const handleTransfer = () => {
-    if (sendMessage && selectedAccount) {
-      sendMessage({
-        action: 'mbl_transfer',
-        sourceEmail: selectedAccount,
-        sourcePassword: '',
-        targetEmail: selectedAccount,
-        targetPassword: ''
-      });
-      showNotification('Transfer işlemi başlatılıyor...', 'info');
+      // Handle delete responses
+      if (latestMessage.action === 'delete_transfer_data' || latestMessage.action === 'delete_transfer_data_web') {
+        if (latestMessage.isError) {
+          showNotification('Transfer geçmişi silinirken hata oluştu', 'error');
+        } else {
+          showNotification('Transfer geçmişi başarıyla silindi', 'success');
+        }
+      }
     }
-  };
+  }, [messages, selectedMobileAccount, selectedWebAccount]);
 
-  const handleAccountSelect = (e) => {
-    setSelectedAccount(e.target.value);
-    const selectedTransfer = transferData.find((transfer) => transfer.trg_account.username === e.target.value);
+  const handleMobileAccountSelect = (e) => {
+    setSelectedMobileAccount(e.target.value);
+    const selectedTransfer = mobileTransferData.find(
+      (transfer) => transfer.trg_account.username === e.target.value
+    );
     if (selectedTransfer) {
       setMblLog(selectedTransfer.mbl_log);
-      setWebLog(selectedTransfer.web_log);
       setIsTransferActive(selectedTransfer.is_active);
     } else {
       setMblLog([]);
-      setWebLog([]);
       setIsTransferActive(false);
     }
   };
 
-  const handleClearTransfers = () => {
-    if (window.confirm('Transfer geçmişini silmek istediğinize emin misiniz?')) {
+  const handleWebAccountSelect = (e) => {
+    setSelectedWebAccount(e.target.value);
+    const selectedTransfer = webTransferData.find(
+      (transfer) => transfer.trg_account.username === e.target.value
+    );
+    if (selectedTransfer) {
+      setWebLog(selectedTransfer.web_log);
+    } else {
+      setWebLog([]);
+    }
+  };
+
+  const handleClearMobileTransfers = () => {
+    if (window.confirm('Mobil transfer geçmişini silmek istediğinize emin misiniz?')) {
       if (sendMessage) {
         sendMessage({ action: 'delete_transfer_data' });
-        setTransferData([]);
-        setSelectedAccount('');
+        setMobileTransferData([]);
+        setSelectedMobileAccount('');
         setMblLog([]);
-        setWebLog([]);
         setIsTransferActive(false);
-        showNotification('Transfer geçmişi silindi', 'success');
+        showNotification('Mobil transfer geçmişi silindi', 'success');
+      }
+    }
+  };
+
+  const handleClearWebTransfers = () => {
+    if (window.confirm('Web transfer geçmişini silmek istediğinize emin misiniz?')) {
+      if (sendMessage) {
+        sendMessage({ action: 'delete_transfer_data_web' });
+        setWebTransferData([]);
+        setSelectedWebAccount('');
+        setWebLog([]);
+        showNotification('Web transfer geçmişi silindi', 'success');
       }
     }
   };
@@ -168,49 +193,44 @@ export default function TransferDetail() {
           width: '80%'
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <FormControl sx={{ width: '95%' }} size="small">
-            <InputLabel id="account-select-label" sx={{ color: theme.palette.mode === 'dark' ? '#fff' : '#000' }}>
-              Hesap
-            </InputLabel>
-            <Select
-              labelId="account-select-label"
-              id="account-select"
-              value={selectedAccount}
-              label="Hesap"
-              onChange={handleAccountSelect}
-              sx={{ 
-                height: 40,
-                color: theme.palette.mode === 'dark' ? '#fff' : '#000',
-                backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#555',
-              }}
-            >
-              <MenuItem value="">Hesap Seçiniz</MenuItem>
-              {transferData.map((account, index) => (
-                <MenuItem key={index} value={account.trg_account.username}>
-                  {account.trg_account.username}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Button
-            color="error"
-            onClick={handleClearTransfers}
-            sx={{
-              minWidth: 'auto',
-              padding: '8px',
-              marginX: 2
-            }}
-          >
-            <DeleteIcon sx={{ fontSize: 20 }} />
-          </Button>
-        </Box>
-
-        <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="subtitle1">Mobil Çıktılar</Typography>
+        <Box sx={{ mb: 2 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={6} sx={{ display: 'flex', alignItems: 'center' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="mobile-account-select-label" sx={{ color: theme.palette.mode === 'dark' ? '#fff' : '#000' }}>
+                  Mobil Hesap
+                </InputLabel>
+                <Select
+                  labelId="mobile-account-select-label"
+                  id="mobile-account-select"
+                  value={selectedMobileAccount}
+                  label="Mobil Hesap"
+                  onChange={handleMobileAccountSelect}
+                  sx={{ 
+                    height: 40,
+                    color: theme.palette.mode === 'dark' ? '#fff' : '#000',
+                    backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#555',
+                  }}
+                >
+                  <MenuItem value="">Hesap Seçiniz</MenuItem>
+                  {mobileTransferData.map((account, index) => (
+                    <MenuItem key={index} value={account.trg_account.username}>
+                      {account.trg_account.username} {account.is_active && '🔄'}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                color="error"
+                onClick={handleClearMobileTransfers}
+                sx={{
+                  minWidth: 'auto',
+                  padding: '8px',
+                  marginLeft: 1
+                }}
+              >
+                <DeleteIcon sx={{ fontSize: 20 }} />
+              </Button>
               <IconButton 
                 onClick={() => setMblAutoScroll(!mblAutoScroll)}
                 sx={{
@@ -219,15 +239,65 @@ export default function TransferDetail() {
               >
                 {!mblAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
               </IconButton>
-            </Box>
-            <Divider sx={{ mb: 1 }} />
+            </Grid>
+            <Grid item xs={6} sx={{ display: 'flex', alignItems: 'center' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="web-account-select-label" sx={{ color: theme.palette.mode === 'dark' ? '#fff' : '#000' }}>
+                  Web Hesap
+                </InputLabel>
+                <Select
+                  labelId="web-account-select-label"
+                  id="web-account-select"
+                  value={selectedWebAccount}
+                  label="Web Hesap"
+                  onChange={handleWebAccountSelect}
+                  sx={{ 
+                    height: 40,
+                    color: theme.palette.mode === 'dark' ? '#fff' : '#000',
+                    backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#555',
+                  }}
+                >
+                  <MenuItem value="">Hesap Seçiniz</MenuItem>
+                  {webTransferData.map((account, index) => (
+                    <MenuItem key={index} value={account.trg_account.username}>
+                      {account.trg_account.username} {account.is_active && '🔄'}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                color="error"
+                onClick={handleClearWebTransfers}
+                sx={{
+                  minWidth: 'auto',
+                  padding: '8px',
+                  marginLeft: 1
+                }}
+              >
+                <DeleteIcon sx={{ fontSize: 20 }} />
+              </Button>
+              <IconButton 
+                onClick={() => setWebAutoScroll(!webAutoScroll)}
+                sx={{
+                  color: !webAutoScroll ? 'success.main' : 'warning.main',
+                }}
+              >
+                {!webAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
+              </IconButton>
+              
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Grid container spacing={2}>
+          <Grid item xs={6}>
             <Box 
               ref={mblLogRef}
               sx={{
                 height: '250px',
                 overflowY: 'auto',
                 backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
-                borderRadius: theme.shape.borderRadius,
+                borderRadius: "4px",
                 p: 1
               }}
             >
@@ -243,25 +313,13 @@ export default function TransferDetail() {
             </Box>
           </Grid>
           <Grid item xs={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="subtitle1">Web Çıktılar</Typography>
-              <IconButton 
-                onClick={() => setWebAutoScroll(!webAutoScroll)}
-                sx={{
-                  color: !webAutoScroll ? 'success.main' : 'warning.main',
-                }}
-              >
-                {!webAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
-              </IconButton>
-            </Box>
-            <Divider sx={{ mb: 1 }} />
             <Box 
               ref={webLogRef}
               sx={{
                 height: '250px',
                 overflowY: 'auto',
                 backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
-                borderRadius: theme.shape.borderRadius,
+                borderRadius: "4px",
                 p: 1
               }}
             >
@@ -278,11 +336,6 @@ export default function TransferDetail() {
           </Grid>
         </Grid>
 
-        <Box sx={{ mt: 2 }}>
-          Transfer Durumu: {isTransferActive ? 'Aktif' : 'Aktif Değil'}
-        </Box>
-
-        {/* Bildirim Kutusu */}
         <Collapse in={notification.show}>
           <Alert 
             severity={notification.type || 'info'}
@@ -297,7 +350,6 @@ export default function TransferDetail() {
               backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
               color: theme.palette.mode === 'dark' ? 'white' : 'inherit'
             }}
-            onClose={() => setNotification({ show: false, message: '', type: 'info' })}
           >
             {notification.message}
           </Alert>

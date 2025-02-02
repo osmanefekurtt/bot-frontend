@@ -244,14 +244,38 @@ export default function AccountDetail({ email }) {
 
       {/* Kontrol Paneli */}
       <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-        <Button
-          variant="contained"
-          onClick={fetchBasket}
-          disabled={!accountData?.mbl?.token && !accountData?.web?.token}
-          sx={{ height: 30 }}
-        >
-          SEPET BİLGİSİNİ ÇEK
-        </Button>
+        {accountData?.web?.token && (
+          <Button
+            variant="contained"
+            onClick={() => {
+              sendMessage({
+                action: 'web_get_basket',
+                email: email
+              });
+              showNotification('Web sepet bilgisi çekiliyor...', 'info');
+            }}
+            sx={{ height: 30 }}
+          >
+            WEB SEPET BİLGİSİNİ ÇEK
+          </Button>
+        )}
+        
+        {accountData?.mbl?.token && (
+          <Button
+            variant="contained"
+            onClick={() => {
+              sendMessage({
+                action: 'mbl_get_basket',
+                email: email
+              });
+              showNotification('Mobil sepet bilgisi çekiliyor...', 'info');
+            }}
+            sx={{ height: 30 }}
+          >
+            MOBİL SEPET BİLGİSİNİ ÇEK
+          </Button>
+        )}
+        
         <Typography variant="body2" color="error">
           Uyarı: Her tıklamada passo'ya istek atılır.
         </Typography>
