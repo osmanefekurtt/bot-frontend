@@ -54,6 +54,32 @@ export default function Config() {
   const [apiKey, setApiKey] = useState('');
   const [loginUrl, setLoginUrl] = useState('https://www.passo.com.tr/tr/giris');
   const [siteKey, setSiteKey] = useState('0x4AAAAAAA4rK8-JCAhwWhV4');
+  const [gsPriority, setGsPriority] = useState(false);
+  const [fbPriority, setFbPriority] = useState(false);
+  const [fanCardNumber, setFanCardNumber] = useState('');
+  const [identityNumber, setIdentityNumber] = useState('');
+  const [priorityCodes, setPriorityCodes] = useState('');
+
+
+  const handleFbPriorityChange = (e) => {
+    const checked = e.target.checked;
+    if (checked && gsPriority) {
+      setGsPriority(false);
+    }
+    if (checked) {
+      setIsWeb(false);
+    }
+    setFbPriority(checked);
+  };
+  
+  // Web handler'ını da güncelleyelim
+  const handleWebChange = (e) => {
+    const checked = e.target.checked;
+    if (checked && (gsPriority || fbPriority)) {
+      return;
+    }
+    setIsWeb(checked);
+  };
 
 
 
@@ -77,6 +103,12 @@ export default function Config() {
   };
 
   const handleSubmit = () => {
+    if (fbPriority && (!fanCardNumber || !identityNumber)) {
+      showNotification('FB Öncelik için Taraftar Kart Numarası ve TC Kimlik Numarası zorunludur.');
+      return;
+    }
+
+
     // Web-specific validation
     if (isWeb) {
       if (!apiKey || !loginUrl || !siteKey) {
@@ -84,6 +116,18 @@ export default function Config() {
         return;
       }
     }
+
+    if (gsPriority) {
+      const codesList = parseTextToArray(priorityCodes);
+      const accountsList = parseTextToArray(accounts);
+      const requiredCodes = accountsList.length * 3;
+      
+      if (codesList.length < requiredCodes) {
+        showNotification(`Her hesap için en az 3 öncelik kodu gerekli. ${accountsList.length} hesap için ${requiredCodes} kod gerekiyor.`);
+        return;
+      }
+    }
+    
 
     // Validasyon kontrolleri
     if (mode === 'manuel') {
@@ -156,7 +200,12 @@ export default function Config() {
         delay: delay,
         api_key: isWeb ? apiKey : '',
         login_url: isWeb ? loginUrl : '',
-        site_key: isWeb ? siteKey : ''
+        site_key: isWeb ? siteKey : '',
+        gs_priority: gsPriority,
+        priority_codes: gsPriority ? parseTextToArray(priorityCodes) : [],
+        fb_priority: fbPriority,
+        fan_card_number: fbPriority ? fanCardNumber : '',
+        identity_number: fbPriority ? identityNumber : '',
       };
     } else {
       // Otomatik mod için aynı yapı
@@ -179,7 +228,12 @@ export default function Config() {
         delay: delay,
         api_key: isWeb ? apiKey : '',
         login_url: isWeb ? loginUrl : '',
-        site_key: isWeb ? siteKey : ''
+        site_key: isWeb ? siteKey : '',
+        gs_priority: gsPriority,
+        priority_codes: gsPriority ? parseTextToArray(priorityCodes) : [],
+        fb_priority: fbPriority,
+        fan_card_number: fbPriority ? fanCardNumber : '',
+        identity_number: fbPriority ? identityNumber : '',
       };
     }
 
@@ -258,6 +312,7 @@ export default function Config() {
             setTitle(config.title || '');
             setIsMobile(config.is_mobile || false);
             setIsWeb(config.is_web || false);
+            setApiKey(config.api_key || '')
             
 
             setUserKey(config.user_key || '');
@@ -268,6 +323,13 @@ export default function Config() {
             setApiKey(config.api_key || '');
             setLoginUrl(config.login_url || 'https://www.passo.com.tr/tr/giris');
             setSiteKey(config.site_key || '0x4AAAAAAA4rK8-JCAhwWhV4');
+            
+            setGsPriority(config.gs_priority || false)
+            setPriorityCodes(config.priority_codes?.join('\n') || '');
+
+            setFbPriority(config.fb_priority || false)
+            setFanCardNumber(config.fb_code_start || '')
+            setIdentityNumber(config.fb_tc || '')
 
             showNotification('Konfigürasyon başarıyla yüklendi', 'success');
           } else {
@@ -358,10 +420,31 @@ export default function Config() {
             control={
               <Checkbox
                 checked={isWeb}
-                onChange={(e) => setIsWeb(e.target.checked)}
+                onChange={handleWebChange}
+                disabled={gsPriority || fbPriority}
               />
             }
             label="Web"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={gsPriority}
+                onChange={(e) => setGsPriority(e.target.checked)}
+                disabled={fbPriority}
+              />
+            }
+            label="GS Öncelik"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={fbPriority}
+                onChange={handleFbPriorityChange}
+                disabled={gsPriority}
+              />
+            }
+            label="FB Öncelik"
           />
         </Box>
 
@@ -564,6 +647,31 @@ export default function Config() {
                     onChange={(e) => setSiteKey(e.target.value)}
                     size="small"
                     placeholder="Site Key giriniz"
+                  />
+                </Grid>
+              </>
+            )}
+
+            {fbPriority && (
+              <>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Taraftar Kart Numarası"
+                    value={fanCardNumber}
+                    onChange={(e) => setFanCardNumber(e.target.value)}
+                    size="small"
+                    placeholder="Taraftar kart numaranızı girin"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="TC Kimlik Numarası"
+                    value={identityNumber}
+                    onChange={(e) => setIdentityNumber(e.target.value)}
+                    size="small"
+                    placeholder="TC kimlik numaranızı girin"
                   />
                 </Grid>
               </>
@@ -797,6 +905,31 @@ export default function Config() {
                 </Grid>
               </>
             )}
+
+            {fbPriority && (
+              <>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Taraftar Kart Numarası"
+                    value={fanCardNumber}
+                    onChange={(e) => setFanCardNumber(e.target.value)}
+                    size="small"
+                    placeholder="Taraftar kart numaranızı girin"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="TC Kimlik Numarası"
+                    value={identityNumber}
+                    onChange={(e) => setIdentityNumber(e.target.value)}
+                    size="small"
+                    placeholder="TC kimlik numaranızı girin"
+                  />
+                </Grid>
+              </>
+            )}
             
             <Grid item xs={12} md={4}>
               <TextField
@@ -848,7 +981,26 @@ export default function Config() {
                 }}
               />
             </Grid>
-          </Grid>
+            {gsPriority && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Öncelik Kodları"
+                  multiline
+                  rows={10}
+                  value={priorityCodes}
+                  onChange={(e) => setPriorityCodes(e.target.value)}
+                  placeholder="Her satıra bir öncelik kodu gelecek şekilde yazın"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontFamily: 'monospace',
+                    }
+                  }}
+                />
+              </Grid>
+            )}
+
+          </Grid> 
         )}
 
         {/* Submit Button */}
