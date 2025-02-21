@@ -117,16 +117,16 @@ export default function Config() {
       }
     }
 
-    if (gsPriority) {
-      const codesList = parseTextToArray(priorityCodes);
-      const accountsList = parseTextToArray(accounts);
-      const requiredCodes = accountsList.length * 3;
+    // if (gsPriority) {
+    //   const codesList = parseTextToArray(priorityCodes);
+    //   const accountsList = parseTextToArray(accounts);
+    //   const requiredCodes = accountsList.length * 3;
       
-      if (codesList.length < requiredCodes) {
-        showNotification(`Her hesap için en az 3 öncelik kodu gerekli. ${accountsList.length} hesap için ${requiredCodes} kod gerekiyor.`);
-        return;
-      }
-    }
+    //   if (codesList.length < requiredCodes) {
+    //     showNotification(`Her hesap için en az 3 öncelik kodu gerekli. ${accountsList.length} hesap için ${requiredCodes} kod gerekiyor.`);
+    //     return;
+    //   }
+    // }
     
 
     // Validasyon kontrolleri
