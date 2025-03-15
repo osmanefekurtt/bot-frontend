@@ -12,6 +12,7 @@ import AccountDetail from './pages/AccountDetail.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import { useWebSocket } from './hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from './config.jsx';
+import FBCodeGenerator from './pages/FBCodeGenerator.jsx';
 import TicketsPage from './pages/Tickets.jsx';
 import CartTransfer from './pages/CartTransfer.jsx';
 import TransferDetail from './pages/TransferDetail.jsx';
@@ -76,6 +77,25 @@ export default function App(props) {
     {
       kind: 'divider',
     },
+    {
+      segment: 'tools',
+      title: 'Öncelik İşlemleri',
+      icon: <BuildIcon />,
+      children: [
+        {
+          segment: 'check_priority',
+          title: 'Öncelik kontrol',
+        },
+        {
+          segment: 'fb_code_generate',
+          title: 'FB Kod Üretici',
+        },
+        {
+          segment: 'gs_code_generate',
+          title: 'GS Kod Üretici',
+        }
+      ]
+    },
     { segment: 'config', title: 'Ayarlar', icon: <SettingsIcon /> },
     {
       segment: 'tools',
@@ -89,10 +109,6 @@ export default function App(props) {
         {
           segment: 'check_proxy',
           title: 'Proxy Kontrol',
-        },
-        {
-          segment: 'check_priority',
-          title: 'Öncelik kontrol',
         }
       ]
     },
@@ -199,11 +215,11 @@ export default function App(props) {
   const getPageContent = () => {
     const segments = router.pathname.split('/');
     const segment = segments[1];
-
+  
     if (segment === 'dashboard') {
       return <Dashboard messages={messages} sendMessage={sendMessage} />;
     }
-
+  
     if (segment === 'accounts') {
       const accountSegment = segments[2];
       const account = accounts.find((acc) => acc.segment === accountSegment);
@@ -214,34 +230,40 @@ export default function App(props) {
         />;
       }
     }
-
+  
     if (segment === 'tickets') {
       return <TicketsPage messages={messages} sendMessage={sendMessage} />;
     }
-
+  
     if (segment === 'transfers') {
       return <CartTransfer messages={messages} sendMessage={sendMessage} />;
     }
-
+  
     if (segment === 'transfer_detail') {
       return <TransferDetail messages={messages} sendMessage={sendMessage} />;
     }
-
+  
     if (segment === 'config') {
       return <Config messages={messages} sendMessage={sendMessage} />;
     }
-
+  
     if (segment === 'tools') {
       const subSegment = segments[2];
       if (subSegment === 'set_proxy') {
         return <SetProxy messages={messages} sendMessage={sendMessage} />;
-      }else if (subSegment === 'check_proxy') {
+      } else if (subSegment === 'check_proxy') {
         return <ProxyChecker messages={messages} sendMessage={sendMessage} />;
-      }else if (subSegment === 'check_priority') {
+      } else if (subSegment === 'check_priority') {
         return <CheckPriority messages={messages} sendMessage={sendMessage} />;
+      } else if (subSegment === 'fb_code_generate') {
+        return <FBCodeGenerator messages={messages} sendMessage={sendMessage} />;
+      } else if (subSegment === 'gs_code_generate') {
+        // GS Kod Üretici için burada bir bileşen döndürün
+        // Şimdilik FB kodu ile aynı bileşeni kullanabilirsiniz
+        return <FBCodeGenerator messages={messages} sendMessage={sendMessage} />;
       }
     }
-
+  
     return <p>Sayfa Bulunamadı</p>;
   };
 

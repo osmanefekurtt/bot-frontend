@@ -23,6 +23,7 @@ import WEB_SOCKET_URL from '../config.jsx';
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
 
+
 export default function Config() {
   const theme = useTheme();
   const { messages, sendMessage } = useWebSocket(WEB_SOCKET_URL);
@@ -55,27 +56,55 @@ export default function Config() {
   const [loginUrl, setLoginUrl] = useState('https://www.passo.com.tr/tr/giris');
   const [siteKey, setSiteKey] = useState('0x4AAAAAAA4rK8-JCAhwWhV4');
   const [gsPriority, setGsPriority] = useState(false);
-  const [fbPriority, setFbPriority] = useState(false);
-  const [fanCardNumber, setFanCardNumber] = useState('');
-  const [identityNumber, setIdentityNumber] = useState('');
   const [priorityCodes, setPriorityCodes] = useState('');
+  const [fbFanCardPriority, setFbFanCardPriority] = useState(false);
+  const [fbDivanPriority, setFbDivanPriority] = useState(false);
+  const [divanCouncilInfos, setDivanCouncilInfos] = useState(''); // Çoklu divan kurulu bilgileri
+  const [fanCardInfos, setFanCardInfos] = useState(''); // Çoklu taraftar kart bilgileri
 
 
-  const handleFbPriorityChange = (e) => {
+
+  // Bu yeni fonksiyonları ekleyin
+  const handleFbFanCardPriorityChange = (e) => {
     const checked = e.target.checked;
-    if (checked && gsPriority) {
+    if (checked && (fbDivanPriority || gsPriority)) {
+      setFbDivanPriority(false);
       setGsPriority(false);
     }
     if (checked) {
       setIsWeb(false);
     }
-    setFbPriority(checked);
+    setFbFanCardPriority(checked);
   };
+
+  const handleFbDivanPriorityChange = (e) => {
+    const checked = e.target.checked;
+    if (checked && (fbFanCardPriority || gsPriority)) {
+      setFbFanCardPriority(false);
+      setGsPriority(false);
+    }
+    if (checked) {
+      setIsWeb(false);
+    }
+    setFbDivanPriority(checked);
+  };
+
+  useEffect(() => {
+    if (fanCardInfos.trim().length > 0) {
+      setDivanCouncilInfos('');
+    }
+  }, [fanCardInfos]);
+  
+  useEffect(() => {
+    if (divanCouncilInfos.trim().length > 0) {
+      setFanCardInfos('');
+    }
+  }, [divanCouncilInfos]);
   
   // Web handler'ını da güncelleyelim
   const handleWebChange = (e) => {
     const checked = e.target.checked;
-    if (checked && (gsPriority || fbPriority)) {
+    if (checked && (gsPriority || fbFanCardPriority || fbDivanPriority)) {
       return;
     }
     setIsWeb(checked);
@@ -103,10 +132,27 @@ export default function Config() {
   };
 
   const handleSubmit = () => {
-    if (fbPriority && (!fanCardNumber || !identityNumber)) {
-      showNotification('FB Öncelik için Taraftar Kart Numarası ve TC Kimlik Numarası zorunludur.');
+    // Yeni FB öncelik doğrulaması ekleyin
+    if (fbFanCardPriority && fanCardInfos.trim().length === 0) {
+      showNotification('FB Taraftar Öncelik için taraftar kart bilgileri zorunludur.');
       return;
     }
+    
+    if (fbDivanPriority && divanCouncilInfos.trim().length === 0) {
+      showNotification('FB Divan Öncelik için divan kurulu bilgileri zorunludur.');
+      return;
+    }
+    
+    // Divan kurulu bilgilerinin formatını kontrol edin (içinde : olmalı)
+    if (fbDivanPriority) {
+      const divanLines = parseTextToArray(divanCouncilInfos);
+      const invalidLines = divanLines.filter(line => !line.includes(':'));
+      
+      if (invalidLines.length > 0) {
+        showNotification('Divan kurulu bilgilerinde geçersiz format. Her satır "KOD:NUMARA" formatında olmalıdır.');
+        return;
+      }
+  }
 
 
     // Web-specific validation
@@ -202,10 +248,10 @@ export default function Config() {
         login_url: isWeb ? loginUrl : '',
         site_key: isWeb ? siteKey : '',
         gs_priority: gsPriority,
-        priority_codes: gsPriority ? parseTextToArray(priorityCodes) : [],
-        fb_priority: fbPriority,
-        fan_card_number: fbPriority ? fanCardNumber : '',
-        identity_number: fbPriority ? identityNumber : '',
+        priority_codes: gsPriority ? parseTextToArray(priorityCodes) : (fbDivanPriority ? parseTextToArray(divanCouncilInfos) : []),
+        fb_fan_card_priority: fbFanCardPriority,
+        fb_divan_priority: fbDivanPriority,
+        fan_card_infos: fbFanCardPriority ? parseTextToArray(fanCardInfos) : [],
       };
     } else {
       // Otomatik mod için aynı yapı
@@ -230,10 +276,10 @@ export default function Config() {
         login_url: isWeb ? loginUrl : '',
         site_key: isWeb ? siteKey : '',
         gs_priority: gsPriority,
-        priority_codes: gsPriority ? parseTextToArray(priorityCodes) : [],
-        fb_priority: fbPriority,
-        fan_card_number: fbPriority ? fanCardNumber : '',
-        identity_number: fbPriority ? identityNumber : '',
+        priority_codes: gsPriority ? parseTextToArray(priorityCodes) : (fbDivanPriority ? parseTextToArray(divanCouncilInfos) : []),
+        fb_fan_card_priority: fbFanCardPriority,
+        fb_divan_priority: fbDivanPriority,
+        fan_card_infos: fbFanCardPriority ? parseTextToArray(fanCardInfos) : [],
       };
     }
 
@@ -327,9 +373,10 @@ export default function Config() {
             setGsPriority(config.gs_priority || false)
             setPriorityCodes(config.priority_codes?.join('\n') || '');
 
-            setFbPriority(config.fb_priority || false)
-            setFanCardNumber(config.fb_code_start || '')
-            setIdentityNumber(config.fb_tc || '')
+            setFbFanCardPriority(config.fb_fan_card_priority || false);
+            setFbDivanPriority(config.fb_divan_priority || false);
+            setFanCardInfos(config.fan_card_infos?.join('\n') || '');
+            setDivanCouncilInfos(config.priority_codes?.join('\n') || '');
 
             showNotification('Konfigürasyon başarıyla yüklendi', 'success');
           } else {
@@ -421,7 +468,7 @@ export default function Config() {
               <Checkbox
                 checked={isWeb}
                 onChange={handleWebChange}
-                disabled={gsPriority || fbPriority}
+                disabled={gsPriority || fbFanCardPriority || fbDivanPriority}
               />
             }
             label="Web"
@@ -431,20 +478,32 @@ export default function Config() {
               <Checkbox
                 checked={gsPriority}
                 onChange={(e) => setGsPriority(e.target.checked)}
-                disabled={fbPriority}
+                disabled={fbFanCardPriority || fbDivanPriority}
               />
             }
             label="GS Öncelik"
           />
+
+          {/* Bu iki yeni checkbox ekleyin */}
           <FormControlLabel
             control={
               <Checkbox
-                checked={fbPriority}
-                onChange={handleFbPriorityChange}
-                disabled={gsPriority}
+                checked={fbFanCardPriority}
+                onChange={handleFbFanCardPriorityChange}
+                disabled={gsPriority || fbDivanPriority}
               />
             }
-            label="FB Öncelik"
+            label="FB Taraftar Öncelik"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={fbDivanPriority}
+                onChange={handleFbDivanPriorityChange}
+                disabled={gsPriority || fbFanCardPriority}
+              />
+            }
+            label="FB Divan Öncelik"
           />
         </Box>
 
@@ -651,31 +710,6 @@ export default function Config() {
                 </Grid>
               </>
             )}
-
-            {fbPriority && (
-              <>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Taraftar Kart Numarası"
-                    value={fanCardNumber}
-                    onChange={(e) => setFanCardNumber(e.target.value)}
-                    size="small"
-                    placeholder="Taraftar kart numaranızı girin"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="TC Kimlik Numarası"
-                    value={identityNumber}
-                    onChange={(e) => setIdentityNumber(e.target.value)}
-                    size="small"
-                    placeholder="TC kimlik numaranızı girin"
-                  />
-                </Grid>
-              </>
-            )}
             
             <Grid item xs={12} md={4}>
               <TextField
@@ -727,6 +761,64 @@ export default function Config() {
                 }}
               />
             </Grid>
+
+            {gsPriority && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Gs bonus kart öncelik kodları"
+                  multiline
+                  rows={10}
+                  value={priorityCodes}
+                  onChange={(e) => setPriorityCodes(e.target.value)}
+                  placeholder="Her satıra bir öncelik kodu gelecek şekilde yazın"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontFamily: 'monospace',
+                    }
+                  }}
+                />
+              </Grid>
+            )}
+
+            {fbFanCardPriority && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Taraftar Kart Bilgileri"
+                  multiline
+                  rows={10}
+                  value={fanCardInfos}
+                  onChange={(e) => setFanCardInfos(e.target.value)}
+                  placeholder="Her satıra bir taraftar kart bilgisi gelecek şekilde yazın"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontFamily: 'monospace',
+                    }
+                  }}
+                />
+              </Grid>
+            )}
+
+            {/* Yeni FB Divan Öncelik alanı ekleyin */}
+            {fbDivanPriority && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Divan Kurulu Bilgileri"
+                  multiline
+                  rows={10}
+                  value={divanCouncilInfos}
+                  onChange={(e) => setDivanCouncilInfos(e.target.value)}
+                  placeholder="Her satıra bir divan kurulu bilgisi gelecek şekilde yazın (örn: 234S7HS:112399243)"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontFamily: 'monospace',
+                    }
+                  }}
+                />
+              </Grid>
+            )}
           </Grid>
         ) : (
           // Manuel Mode Content
@@ -905,31 +997,6 @@ export default function Config() {
                 </Grid>
               </>
             )}
-
-            {fbPriority && (
-              <>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Taraftar Kart Numarası"
-                    value={fanCardNumber}
-                    onChange={(e) => setFanCardNumber(e.target.value)}
-                    size="small"
-                    placeholder="Taraftar kart numaranızı girin"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="TC Kimlik Numarası"
-                    value={identityNumber}
-                    onChange={(e) => setIdentityNumber(e.target.value)}
-                    size="small"
-                    placeholder="TC kimlik numaranızı girin"
-                  />
-                </Grid>
-              </>
-            )}
             
             <Grid item xs={12} md={4}>
               <TextField
@@ -985,12 +1052,52 @@ export default function Config() {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="Öncelik Kodları"
+                  label="Gs bonus kart öncelik kodları"
                   multiline
                   rows={10}
                   value={priorityCodes}
                   onChange={(e) => setPriorityCodes(e.target.value)}
                   placeholder="Her satıra bir öncelik kodu gelecek şekilde yazın"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontFamily: 'monospace',
+                    }
+                  }}
+                />
+              </Grid>
+            )}
+
+
+            {fbFanCardPriority && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Taraftar Kart Bilgileri"
+                  multiline
+                  rows={10}
+                  value={fanCardInfos}
+                  onChange={(e) => setFanCardInfos(e.target.value)}
+                  placeholder="Her satıra bir taraftar kart bilgisi gelecek şekilde yazın"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontFamily: 'monospace',
+                    }
+                  }}
+                />
+              </Grid>
+            )}
+
+            {/* Yeni FB Divan Öncelik alanı ekleyin */}
+            {fbDivanPriority && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Divan Kurulu Bilgileri"
+                  multiline
+                  rows={10}
+                  value={divanCouncilInfos}
+                  onChange={(e) => setDivanCouncilInfos(e.target.value)}
+                  placeholder="Her satıra bir divan kurulu bilgisi gelecek şekilde yazın (örn: 234S7HS:112399243)"
                   sx={{
                     '& .MuiInputBase-input': {
                       fontFamily: 'monospace',
