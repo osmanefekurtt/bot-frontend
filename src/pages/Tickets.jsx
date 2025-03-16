@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Card, CardContent, Typography, Grid, TextField, IconButton, useTheme } from '@mui/material';
-import { CopyAll as CopyIcon } from '@mui/icons-material';
+import { Box, Button, Card, CardContent, Typography, Grid, TextField, IconButton, useTheme, Chip, Paper } from '@mui/material';
+import { CopyAll as CopyIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material';
 import { useWebSocket } from '../hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from '../config.jsx';
 import { Alert, Collapse } from '@mui/material';
@@ -12,13 +12,13 @@ export default function TicketsPage() {
     const [tickets, setTickets] = useState([]);
     const [copiedText, setCopiedText] = useState('');
     const { messages, sendMessage } = useWebSocket(WEB_SOCKET_URL);
+    const [tribuneCounts, setTribuneCounts] = useState({});
 
     const [notification, setNotification] = useState({
         message: '',
         type: 'info',
         show: false
     });
-
 
     const showNotification = (message, type = 'info') => {
       setNotification({
@@ -41,6 +41,62 @@ export default function TicketsPage() {
         return () => clearInterval(intervalId);
     }, [selectedCategory, sendMessage]);
 
+    // Count tribunes with more than 1 minute remaining
+    const countTribunesByRemainingTime = (tickets, minimumMinutes = 1) => {
+        // Filter tickets with more than minimumMinutes minutes remaining
+        const validTickets = tickets.filter(ticket => {
+            const expiryDate = new Date(ticket.expiry_time);
+            const currentDate = new Date();
+            const timeDifference = expiryDate - currentDate;
+            
+            // Check if remaining time is more than minimumMinutes minutes (in milliseconds)
+            return timeDifference > (minimumMinutes * 60 * 1000);
+        });
+        
+        // Count occurrences of each tribune
+        const tribuneCounts = {};
+        validTickets.forEach(ticket => {
+            const tribuneName = ticket.tribune_Name || 'Bilinmeyen Tribün';
+            tribuneCounts[tribuneName] = (tribuneCounts[tribuneName] || 0) + 1;
+        });
+        
+        return tribuneCounts;
+    };
+    
+    // Get the ticket category from the first ticket
+    const getTicketCategory = (tickets) => {
+        if (tickets && tickets.length > 0 && tickets[0].seatCategory_Name) {
+            return tickets[0].seatCategory_Name;
+        }
+        return "Kategori Adı";
+    };
+
+    // Generate the display string for tribune counts
+    const generateTribuneCountsDisplay = (tribuneCounts) => {
+        return Object.entries(tribuneCounts)
+            .map(([tribune, count]) => `${tribune}: ${count} Adet`)
+            .join(' - ');
+    };
+
+    // Generate copy format as requested
+    const generateCopyFormat = (tribuneCounts, categoryName) => {
+        let result = categoryName + '\n\n';
+        
+        Object.entries(tribuneCounts).forEach(([tribune, count]) => {
+            const countText = count === 1 ? 'tek' : `${count}x`;
+            result += `${tribune} ${countText}\n`;
+        });
+        
+        return result;
+    };
+
+    // Copy tribune counts in specified format
+    const copyTribuneCounts = () => {
+        const category = getTicketCategory(tickets);
+        const copyText = generateCopyFormat(tribuneCounts, category);
+        copyToClipboard(copyText);
+    };
+
     useEffect(() => {
         if (messages.length > 0) {
             const latestMessage = messages[messages.length - 1];
@@ -48,9 +104,11 @@ export default function TicketsPage() {
                 if (latestMessage.isError) {
                     showNotification('Biletler yüklenemedi', 'error');
                     setTickets([]);
+                    setTribuneCounts({});
                 } else if (!latestMessage.result || !latestMessage.result.tickets || latestMessage.result.tickets.length === 0) {
                     showNotification('Aktif bilet bulunamadı', 'warning');
                     setTickets([]);
+                    setTribuneCounts({});
                 } else {
                     const unexpiredTickets = latestMessage.result.tickets.filter((ticket) => {
                         const expiryDate = new Date(ticket.expiry_time);
@@ -59,6 +117,11 @@ export default function TicketsPage() {
                     
                     if (unexpiredTickets.length === 0) {
                         showNotification('Süresiz bilet bulunamadı', 'warning');
+                        setTribuneCounts({});
+                    } else {
+                        // Calculate tribune counts for tickets with more than 1 minute remaining
+                        const newTribuneCounts = countTribunesByRemainingTime(unexpiredTickets);
+                        setTribuneCounts(newTribuneCounts);
                     }
                     
                     setTickets(unexpiredTickets);
@@ -85,7 +148,7 @@ export default function TicketsPage() {
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(() => {
-              showNotification(`${text} kopyalandı`, 'success');
+              showNotification(`Kopyalandı`, 'success');
             }).catch((err) => {
               showNotification('Kopyalama başarısız', 'error');
             });
@@ -137,22 +200,71 @@ export default function TicketsPage() {
         copyToClipboard(details);
     };
 
+    // Check if there are any tribune counts to display
+    const hasTribuneCounts = Object.keys(tribuneCounts).length > 0;
+
     return (
         <Box p={3}>
-            <Box display="flex" gap={1} mb={3} alignItems="center">
-                {categories.map((category) => (
-                    <Button
-                        key={category}
-                        variant={selectedCategory === category ? 'contained' : 'outlined'}
-                        onClick={() => setSelectedCategory(category)}
-                        sx={{ fontSize: '0.7rem' }}
+            <Box display="flex" flexDirection="column" gap={2} mb={3}>
+                {/* Tribune counts summary */}
+                {hasTribuneCounts && (
+                    <Paper 
+                        elevation={1} 
+                        sx={{ 
+                            p: 2, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            backgroundColor: theme.palette.background.paper
+                        }}
                     >
-                        {category}
-                    </Button>
-                ))}
-                <Typography variant="body2" sx={{ fontSize: '0.8rem', ml: 2 }}>
-                    Toplam Bilet: {tickets.length}
-                </Typography>
+                        <Box>
+                            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                1 dakikadan fazla süresi olan biletler:
+                            </Typography>
+                            <Typography variant="body2">
+                                {generateTribuneCountsDisplay(tribuneCounts)}
+                            </Typography>
+                        </Box>
+                        <IconButton 
+                            onClick={copyTribuneCounts}
+                            aria-label="Kopyala"
+                            sx={{ 
+                                ml: 2,
+                                p: 2,
+                                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                                color: theme.palette.text.primary,
+                                borderRadius: '50%',
+                                boxShadow: theme.shadows[1],
+                                '&:hover': {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                                    transform: 'scale(1.05)',
+                                    transition: 'all 0.2s'
+                                },
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <ContentCopyIcon fontSize="medium" />
+                        </IconButton>
+                    </Paper>
+                )}
+
+                {/* Category filters */}
+                <Box display="flex" gap={1} alignItems="center">
+                    {categories.map((category) => (
+                        <Button
+                            key={category}
+                            variant={selectedCategory === category ? 'contained' : 'outlined'}
+                            onClick={() => setSelectedCategory(category)}
+                            sx={{ fontSize: '0.7rem' }}
+                        >
+                            {category}
+                        </Button>
+                    ))}
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem', ml: 2 }}>
+                        Toplam Bilet: {tickets.length}
+                    </Typography>
+                </Box>
             </Box>
 
             <Grid container spacing={2}>
@@ -296,7 +408,6 @@ export default function TicketsPage() {
                     </Grid>
                 ))}
             </Grid>
-
 
             <Collapse in={notification.show}>
                 <Alert 
