@@ -71,9 +71,6 @@ export default function Config() {
       setFbDivanPriority(false);
       setGsPriority(false);
     }
-    if (checked) {
-      setIsWeb(false);
-    }
     setFbFanCardPriority(checked);
   };
 
@@ -82,9 +79,6 @@ export default function Config() {
     if (checked && (fbFanCardPriority || gsPriority)) {
       setFbFanCardPriority(false);
       setGsPriority(false);
-    }
-    if (checked) {
-      setIsWeb(false);
     }
     setFbDivanPriority(checked);
   };
@@ -104,9 +98,6 @@ export default function Config() {
   // Web handler'ını da güncelleyelim
   const handleWebChange = (e) => {
     const checked = e.target.checked;
-    if (checked && (gsPriority || fbFanCardPriority || fbDivanPriority)) {
-      return;
-    }
     setIsWeb(checked);
   };
 
@@ -468,7 +459,6 @@ export default function Config() {
               <Checkbox
                 checked={isWeb}
                 onChange={handleWebChange}
-                disabled={gsPriority || fbFanCardPriority || fbDivanPriority}
               />
             }
             label="Web"
