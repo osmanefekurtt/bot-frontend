@@ -24,6 +24,9 @@ import Config from './pages/Config.jsx';
 import SettingsIcon from '@mui/icons-material/Settings';
 import BuildIcon from '@mui/icons-material/Build';
 import CheckPriority from './pages/CheckPriority.jsx';
+import UnblockAccounts from './pages/UnblockAccounts.jsx';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
+
 
 const demoTheme = extendTheme({
   colorSchemes: { light: true, dark: true },
@@ -73,6 +76,7 @@ export default function App(props) {
     { segment: 'tickets', title: 'Biletler', icon: <LocalActivityIcon /> },
     { segment: 'transfers', title: 'Sepet Transfer', icon: <MoveDownIcon /> },
     { segment: 'transfer_detail', title: 'Transfer Detay', icon: <MoveDownIcon /> },
+    { segment: 'unblock_accounts', title: 'Bloke Kaldırma', icon: <LockOpenIcon /> },
     { segment: 'accounts', title: 'Hesaplar', children: [] },
     {
       kind: 'divider',
@@ -241,6 +245,10 @@ export default function App(props) {
   
     if (segment === 'transfer_detail') {
       return <TransferDetail messages={messages} sendMessage={sendMessage} />;
+    }
+
+    if (segment === 'unblock_accounts') {
+      return <UnblockAccounts messages={messages} sendMessage={sendMessage} />;
     }
   
     if (segment === 'config') {
