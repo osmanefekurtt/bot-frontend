@@ -50,7 +50,6 @@ export default function UnblockAccounts() {
   };
 
   useEffect(() => {
-    document.title = "Hesap Bloke Kaldırma | Bayer Ticket 🎫";
     
     if (sendMessage) {
       // Sürekli durum kontrolü için interval ekledim
