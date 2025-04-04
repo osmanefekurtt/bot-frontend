@@ -9,12 +9,24 @@ import {
   Paper,
   Alert,
   Collapse,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextareaAutosize,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import { useWebSocket } from '../hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from '../config.jsx';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 
 export default function UnblockAccounts() {
   const theme = useTheme();
@@ -25,6 +37,11 @@ export default function UnblockAccounts() {
   const logRef = useRef(null);
   const { messages, sendMessage } = useWebSocket(WEB_SOCKET_URL);
   const statusIntervalRef = useRef(null);
+
+  // Toplu hesap için yeni state'ler
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkAccounts, setBulkAccounts] = useState([]);
+  const [bulkAccountText, setBulkAccountText] = useState('');
 
   const [notification, setNotification] = useState({
     message: '',
@@ -146,6 +163,40 @@ export default function UnblockAccounts() {
     }
   };
 
+  // Toplu hesap işlemleri
+  const handleOpenBulkDialog = () => {
+    setBulkDialogOpen(true);
+  };
+
+  const handleCloseBulkDialog = () => {
+    setBulkDialogOpen(false);
+  };
+
+  const parseBulkAccounts = () => {
+    const lines = bulkAccountText.split('\n').filter(line => line.trim() !== '');
+    
+    const parsedAccounts = lines.map(line => {
+      const parts = line.split(':');
+      if (parts.length >= 2) {
+        return {
+          email: parts[0].trim(),
+          password: parts[1].trim()
+        };
+      }
+      return null;
+    }).filter(account => account !== null);
+    
+    setBulkAccounts(parsedAccounts);
+    showNotification(`${parsedAccounts.length} hesap başarıyla yüklendi`, 'success');
+  };
+
+  const selectAccount = (account) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    handleCloseBulkDialog();
+    showNotification('Hesap bilgileri yüklendi', 'success');
+  };
+
   return (
     <Box
       sx={{
@@ -171,7 +222,7 @@ export default function UnblockAccounts() {
         }}
       >
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={5}>
+          <Grid item xs={12} sm={4.5}>
             <TextField
               fullWidth
               label="E-posta Adresi"
@@ -191,7 +242,7 @@ export default function UnblockAccounts() {
               }}
             />
           </Grid>
-          <Grid item xs={12} sm={5}>
+          <Grid item xs={12} sm={4.5}>
             <TextField
               fullWidth
               label="Parola"
@@ -212,7 +263,20 @@ export default function UnblockAccounts() {
               }}
             />
           </Grid>
-          <Grid item xs={12} sm={2}>
+          <Grid item xs={6} sm={1.5}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="primary"
+              onClick={handleOpenBulkDialog}
+              startIcon={<FormatListBulletedIcon />}
+              disabled={isProcessing}
+              sx={{ height: '56px' }}
+            >
+              Hesaplar
+            </Button>
+          </Grid>
+          <Grid item xs={6} sm={1.5}>
             {!isProcessing ? (
               <Button
                 fullWidth
@@ -294,6 +358,80 @@ export default function UnblockAccounts() {
           }
         </Box>
       </Box>
+
+      {/* Toplu Hesap Dialog */}
+      <Dialog 
+        open={bulkDialogOpen} 
+        onClose={handleCloseBulkDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>Toplu Hesap Listesi</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Hesapları email:password formatında, her satıra bir hesap gelecek şekilde girin
+            </Typography>
+            <TextareaAutosize
+              minRows={8}
+              style={{ 
+                width: '100%', 
+                padding: '8px',
+                borderColor: theme.palette.mode === 'dark' ? '#555' : '#ccc', 
+                borderRadius: '4px',
+                backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#fff',
+                color: theme.palette.mode === 'dark' ? '#fff' : '#000'
+              }}
+              value={bulkAccountText}
+              onChange={(e) => setBulkAccountText(e.target.value)}
+            />
+            <Button 
+              variant="contained" 
+              size="small" 
+              onClick={parseBulkAccounts}
+              sx={{ mt: 1 }}
+            >
+              Hesapları Yükle
+            </Button>
+          </Box>
+
+          {bulkAccounts.length > 0 && (
+            <TableContainer sx={{ maxHeight: '300px' }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Parola</TableCell>
+                    <TableCell align="right">İşlem</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {bulkAccounts.map((account, index) => (
+                    <TableRow key={index} hover>
+                      <TableCell>{account.email}</TableCell>
+                      <TableCell>{account.password}</TableCell>
+                      <TableCell align="right">
+                        <Button 
+                          size="small" 
+                          variant="contained" 
+                          onClick={() => selectAccount(account)}
+                        >
+                          Seç
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBulkDialog} color="primary">
+            Kapat
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Collapse in={notification.show}>
         <Alert 
