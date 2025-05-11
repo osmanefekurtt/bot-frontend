@@ -18,6 +18,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import LockIcon from '@mui/icons-material/Lock';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'; // Yeni import
 import { useWebSocket } from '../hooks/useWebSocket.jsx';
 import WEB_SOCKET_URL from '../config.jsx';
 
@@ -55,6 +56,17 @@ export default function TransferDetail() {
     setTimeout(() => {
       setNotification(prev => ({ ...prev, show: false }));
     }, 3000);
+  };
+
+  // Fast Pay verisini kopyalama fonksiyonu
+  const copyFastPayData = (data) => {
+    navigator.clipboard.writeText(data)
+      .then(() => {
+        showNotification('Fast Pay verisi başarıyla kopyalandı', 'success');
+      })
+      .catch(() => {
+        showNotification('Kopyalama işlemi başarısız oldu', 'error');
+      });
   };
 
   useEffect(() => {
@@ -239,6 +251,18 @@ export default function TransferDetail() {
               >
                 {!mblAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
               </IconButton>
+              {/* Mobil için fast_pay_data kopyalama butonu */}
+              {selectedMobileAccount && mobileTransferData.find(t => t.trg_account.username === selectedMobileAccount)?.fast_pay_data && (
+                <IconButton 
+                  onClick={() => copyFastPayData(mobileTransferData.find(t => t.trg_account.username === selectedMobileAccount).fast_pay_data)}
+                  sx={{
+                    color: 'info.main',
+                  }}
+                  title="Fast Pay verisini kopyala"
+                >
+                  <ContentCopyIcon sx={{ fontSize: 15 }} />
+                </IconButton>
+              )}
             </Grid>
             <Grid item xs={6} sx={{ display: 'flex', alignItems: 'center' }}>
               <FormControl fullWidth size="small">
@@ -284,7 +308,18 @@ export default function TransferDetail() {
               >
                 {!webAutoScroll ? <LockOpenIcon sx={{ fontSize: 15 }} /> : <LockIcon sx={{ fontSize: 15 }} />}
               </IconButton>
-              
+              {/* Web için fast_pay_data kopyalama butonu */}
+              {selectedWebAccount && webTransferData.find(t => t.trg_account.username === selectedWebAccount)?.fast_pay_data && (
+                <IconButton 
+                  onClick={() => copyFastPayData(webTransferData.find(t => t.trg_account.username === selectedWebAccount).fast_pay_data)}
+                  sx={{
+                    color: 'info.main',
+                  }}
+                  title="Fast Pay verisini kopyala"
+                >
+                  <ContentCopyIcon sx={{ fontSize: 15 }} />
+                </IconButton>
+              )}
             </Grid>
           </Grid>
         </Box>
